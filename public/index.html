@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Mandate — Agent Spend Control Plane</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body {
+    background: #0b0e14;
+    color: #e8ecf1;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    margin: 0;
+    padding: 32px;
+    font-size: 18px;
+  }
+  h1 { font-size: 28px; margin: 0 0 4px; }
+  .subtitle { color: #8a94a6; margin: 0 0 28px; font-size: 16px; }
+  .panel {
+    background: #12161f;
+    border: 1px solid #232a38;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  .stat-row { display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 16px; }
+  .stat { }
+  .stat .label { color: #8a94a6; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .stat .value { font-size: 32px; font-weight: 700; }
+  .bar-track {
+    width: 100%;
+    height: 20px;
+    background: #232a38;
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #4ade80, #22c55e);
+    transition: width 0.3s ease;
+  }
+  .mandate-details { color: #8a94a6; font-size: 15px; margin-top: 12px; }
+  form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 8px; }
+  .field { display: flex; flex-direction: column; gap: 4px; }
+  .field label { font-size: 13px; color: #8a94a6; }
+  input, select {
+    background: #0b0e14;
+    border: 1px solid #333c4d;
+    color: #e8ecf1;
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 16px;
+  }
+  button {
+    background: #3b82f6;
+    color: white;
+    border: none;
+    padding: 11px 20px;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:hover { background: #2563eb; }
+  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
+  th, td { text-align: left; padding: 10px 12px; font-size: 15px; border-bottom: 1px solid #232a38; }
+  th { color: #8a94a6; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
+  .verdict-approve { color: #4ade80; font-weight: 700; }
+  .verdict-decline { color: #f87171; font-weight: 700; }
+  .reason { color: #f87171; font-family: monospace; font-size: 13px; }
+  .empty { color: #8a94a6; padding: 16px 0; }
+</style>
+</head>
+<body>
+  <h1>Mandate</h1>
+  <p class="subtitle">Agent spend control plane — the decline is the demo.</p>
+
+  <div class="panel">
+    <div class="stat-row">
+      <div class="stat">
+        <div class="label">XSGD Balance</div>
+        <div class="value" id="balance">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Spent / Cap</div>
+        <div class="value" id="spent">-</div>
+      </div>
+      <div class="stat">
+        <div class="label">Headroom</div>
+        <div class="value" id="headroom">-</div>
+      </div>
+    </div>
+    <div class="bar-track"><div class="bar-fill" id="bar" style="width:0%"></div></div>
+    <div class="mandate-details" id="mandate-details">Loading mandate…</div>
+  </div>
+
+  <div class="panel">
+    <form id="intent-form">
+      <div class="field">
+        <label for="merchant">Merchant</label>
+        <input id="merchant" name="merchant" value="acme-store" />
+      </div>
+      <div class="field">
+        <label for="amount">Amount (XSGD)</label>
+        <input id="amount" name="amount" type="number" value="10" />
+      </div>
+      <div class="field">
+        <label for="item">Item</label>
+        <input id="item" name="item" value="widget" />
+      </div>
+      <button type="submit">Submit intent</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2 style="margin-top:0;">Decision Log</h2>
+    <table id="log-table">
+      <thead>
+        <tr><th>Time</th><th>Merchant</th><th>Amount</th><th>Item</th><th>Verdict</th><th>Reason / Card</th></tr>
+      </thead>
+      <tbody id="log-body"></tbody>
+    </table>
+    <div class="empty" id="log-empty" style="display:none;">No decisions yet.</div>
+  </div>
+
+<script>
+async function loadStatus() {
+  const res = await fetch("/status");
+  const s = await res.json();
+  document.getElementById("balance").textContent = s.balance != null ? s.balance + " XSGD" : "n/a";
+  document.getElementById("spent").textContent = s.spentSoFar + " / " + s.mandate.capTotal + " XSGD";
+  document.getElementById("headroom").textContent = s.headroom + " XSGD";
+  const pct = Math.min(100, (s.spentSoFar / s.mandate.capTotal) * 100);
+  document.getElementById("bar").style.width = pct + "%";
+  document.getElementById("mandate-details").textContent =
+    "Per-transaction limit: " + s.mandate.perTransactionLimit + " XSGD · " +
+    "Allowlist: " + s.mandate.merchantAllowlist.join(", ") + " · " +
+    "Expires: " + new Date(s.mandate.expiresAt).toLocaleString();
+}
+
+async function loadDecisions() {
+  const res = await fetch("/decisions");
+  const decisions = await res.json();
+  const body = document.getElementById("log-body");
+  const empty = document.getElementById("log-empty");
+  body.innerHTML = "";
+  empty.style.display = decisions.length === 0 ? "block" : "none";
+  for (const d of decisions) {
+    const tr = document.createElement("tr");
+    const verdictClass = d.verdict === "APPROVE" ? "verdict-approve" : "verdict-decline";
+    const detail = d.verdict === "APPROVE" ? (d.cardReference || "-") : d.reasonCode;
+    tr.innerHTML =
+      "<td>" + new Date(d.timestamp).toLocaleTimeString() + "</td>" +
+      "<td>" + d.merchant + "</td>" +
+      "<td>" + d.amount + "</td>" +
+      "<td>" + d.item + "</td>" +
+      "<td class='" + verdictClass + "'>" + d.verdict + "</td>" +
+      "<td class='reason'>" + detail + "</td>";
+    body.appendChild(tr);
+  }
+}
+
+async function refresh() {
+  await Promise.all([loadStatus(), loadDecisions()]);
+}
+
+document.getElementById("intent-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const merchant = document.getElementById("merchant").value;
+  const amount = Number(document.getElementById("amount").value);
+  const item = document.getElementById("item").value;
+  await fetch("/intent", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ merchant, amount, item }),
+  });
+  await refresh();
+});
+
+refresh();
+setInterval(refresh, 5000);
+</script>
+</body>
+</html>
