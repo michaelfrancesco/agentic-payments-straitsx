@@ -4,7 +4,7 @@ import { describe, it, expect } from "vitest";
 import { sanitizeResponse, detectInjection, guardPayload } from "./mcpGuard.js";
 
 function loadFixture(): unknown {
-  const filePath = path.resolve(process.cwd(), ".context/mcp-injection-sample.md");
+  const filePath = path.resolve(process.cwd(), "src/fixtures/mcp-injection-sample.md");
   const contents = fs.readFileSync(filePath, "utf-8");
   const match = contents.match(/```json\n([\s\S]*?)\n```/);
   if (!match) {

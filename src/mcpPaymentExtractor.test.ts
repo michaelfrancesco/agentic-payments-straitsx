@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 import { extractPaymentFields } from "./mcpPaymentExtractor.js";
 
 function loadFixture(): unknown {
-  const filePath = path.resolve(process.cwd(), ".context/mcp-injection-sample.md");
+  const filePath = path.resolve(process.cwd(), "src/fixtures/mcp-injection-sample.md");
   const contents = fs.readFileSync(filePath, "utf-8");
   const match = contents.match(/```json\n([\s\S]*?)\n```/);
   if (!match) {
