@@ -161,25 +161,33 @@
           <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
               <h2 class="text-lg font-semibold text-white">Control Plane</h2>
-              <p class="mt-1 text-sm text-muted-foreground">Live balance, spend cap, and mandate headroom.</p>
+              <p class="mt-1 text-sm text-muted-foreground">Spend rules, guard blocks, and the agent wallet used for card issuance.</p>
             </div>
-            <span id="wallet" class="max-w-full truncate rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              Wallet loading
-            </span>
           </div>
 
-          <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-lg border border-border bg-zinc-950 p-4">
-              <p class="text-xs font-medium uppercase text-muted-foreground">XSGD balance</p>
-              <p id="balance" class="mt-2 text-2xl font-semibold text-white">--</p>
+          <div class="mt-4 rounded-md border border-border bg-zinc-950 p-3">
+            <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div class="min-w-0">
+                <p class="text-xs font-medium uppercase text-muted-foreground">Agent wallet</p>
+                <code id="wallet" class="mt-1 block break-all text-xs leading-5 text-white">Wallet loading</code>
+              </div>
+              <div class="flex shrink-0 items-center gap-2">
+                <button
+                  id="walletCopy"
+                  type="button"
+                  class="h-8 rounded-md border border-border bg-muted px-3 text-[11px] font-semibold uppercase tracking-wide text-white transition hover:border-accent/60 hover:bg-zinc-800 hover:text-accent focus:outline-none focus:ring-2 focus:ring-accent/70 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  Copy
+                </button>
+                <span id="walletCopyStatus" class="hidden text-xs text-accent">Copied</span>
+              </div>
             </div>
+          </div>
+
+          <div class="mt-5 grid gap-3 sm:grid-cols-2">
             <div class="rounded-lg border border-border bg-zinc-950 p-4">
-              <p class="text-xs font-medium uppercase text-muted-foreground">Spent</p>
+              <p class="text-xs font-medium uppercase text-muted-foreground">Spent under mandate</p>
               <p id="spent" class="mt-2 text-2xl font-semibold text-white">--</p>
-            </div>
-            <div class="rounded-lg border border-border bg-zinc-950 p-4">
-              <p class="text-xs font-medium uppercase text-muted-foreground">Remaining</p>
-              <p id="remaining" class="mt-2 text-2xl font-semibold text-white">--</p>
             </div>
             <div class="rounded-lg border border-border bg-zinc-950 p-4">
               <p class="text-xs font-medium uppercase text-muted-foreground">Guard blocks</p>
@@ -509,9 +517,7 @@
         guardBanner: document.querySelector("#guardBanner"),
         guardBannerText: document.querySelector("#guardBannerText"),
         guardBannerClose: document.querySelector("#guardBannerClose"),
-        balance: document.querySelector("#balance"),
         spent: document.querySelector("#spent"),
-        remaining: document.querySelector("#remaining"),
         blockedCount: document.querySelector("#blockedCount"),
         barFill: document.querySelector("#barFill"),
         capLabel: document.querySelector("#capLabel"),
@@ -520,6 +526,8 @@
         allowlist: document.querySelector("#allowlist"),
         expires: document.querySelector("#expires"),
         wallet: document.querySelector("#wallet"),
+        walletCopy: document.querySelector("#walletCopy"),
+        walletCopyStatus: document.querySelector("#walletCopyStatus"),
         rows: document.querySelector("#decisionRows"),
         logCount: document.querySelector("#logCount"),
         form: document.querySelector("#intentForm"),
@@ -590,6 +598,14 @@
         return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
       }
 
+      function setWalletCopyStatus(message, isError = false) {
+        els.walletCopyStatus.textContent = message;
+        els.walletCopyStatus.className = isError ? "text-xs text-decline" : "text-xs text-accent";
+        window.setTimeout(() => {
+          els.walletCopyStatus.classList.add("hidden");
+        }, 1600);
+      }
+
       function escapeHtml(value) {
         return String(value ?? "")
           .replaceAll("&", "&amp;")
@@ -622,15 +638,12 @@
       function renderStatus(status) {
         const spent = Number(status.spentSoFar ?? 0);
         const cap = Number(status.mandate?.capTotal ?? 0);
-        const remaining = Math.max(0, cap - spent);
         const pct = cap > 0 ? Math.min(100, Math.max(0, (spent / cap) * 100)) : 0;
 
         currentMandate = status.mandate ?? null;
 
         renderMode(Boolean(status.dryRun));
-        els.balance.textContent = formatXsgd(status.balance);
         els.spent.textContent = formatXsgd(spent);
-        els.remaining.textContent = formatXsgd(remaining);
         els.blockedCount.textContent = els.blockedCount.textContent || "0";
         els.barFill.style.width = `${pct}%`;
         els.capLabel.textContent = `${formatXsgd(spent)} of ${formatXsgd(cap)}`;
@@ -641,6 +654,7 @@
           ? new Date(status.mandate.expiresAt).toLocaleDateString([], { month: "short", day: "2-digit" })
           : "--";
         els.wallet.textContent = status.address ?? "Wallet unavailable";
+        els.walletCopy.disabled = !status.address;
 
         if (!els.allowlistModal.classList.contains("hidden")) {
           renderAllowlistModal();
@@ -1266,6 +1280,21 @@
           els.formResult.textContent = error instanceof Error ? error.message : String(error);
           els.dryRunSwitch.disabled = false;
         });
+      });
+
+      els.walletCopy.addEventListener("click", async () => {
+        const address = els.wallet.textContent.trim();
+        if (!address || address === "Wallet unavailable" || address === "Wallet loading") {
+          setWalletCopyStatus("No address", true);
+          return;
+        }
+
+        try {
+          await navigator.clipboard.writeText(address);
+          setWalletCopyStatus("Copied");
+        } catch {
+          setWalletCopyStatus("Copy failed", true);
+        }
       });
 
       document.querySelectorAll("[data-preset]").forEach((button) => {
