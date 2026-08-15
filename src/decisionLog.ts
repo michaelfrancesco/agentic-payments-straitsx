@@ -23,6 +23,7 @@ export interface DecisionEntry {
   reviewStatus?: "PENDING_REVIEW" | "APPROVED" | "DECLINED";
   reviewedAt?: string;
   reviewNote?: string;
+  issueReceipt?: unknown;
 }
 
 function readDecisions(): DecisionEntry[] {
@@ -65,6 +66,34 @@ export function updateReviewStatus(
     reviewStatus,
     reviewedAt: new Date().toISOString(),
     reviewNote,
+  };
+
+  decisions[index] = updated;
+  fs.writeFileSync(DECISIONS_FILE, JSON.stringify(decisions, null, 2));
+  return updated;
+}
+
+export function updateCardIssued(
+  id: string,
+  cardReference: string | null,
+  issueReceipt: unknown,
+  reviewNote: string
+): DecisionEntry | null {
+  const decisions = readDecisions();
+  const index = decisions.findIndex((entry) => matchesDecisionId(entry, id));
+
+  if (index === -1) {
+    return null;
+  }
+
+  const updated: DecisionEntry = {
+    ...decisions[index],
+    verdict: "APPROVE",
+    cardReference,
+    reviewStatus: "APPROVED",
+    reviewedAt: new Date().toISOString(),
+    reviewNote,
+    issueReceipt,
   };
 
   decisions[index] = updated;

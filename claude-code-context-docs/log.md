@@ -111,3 +111,7 @@ Format for each entry:
 ## 2026-08-15 17:59 SGT — Manual review gate added before signing
 **Type:** code
 **Details:** Added stable decision IDs and manual review endpoints: `POST /review/:decisionId/approve` and `POST /review/:decisionId/decline`. The approve path only marks a suspicious MCP response as human-reviewed after extracted payment fields validate; it returns `APPROVED_NO_SIGNING` and does not mint a card or produce a wallet signature. Dashboard now shows review action buttons for `PENDING_REVIEW` rows. Verified `npm test` passes with 16 tests, `npm run typecheck` passes, a live MCP response was blocked as `SUSPICIOUS_MCP_RESPONSE`, review approval updated it to `APPROVED`, and runtime mode was returned to `DRY_RUN=true`.
+
+## 2026-08-15 18:26 SGT — Controlled sandbox card issuance completed
+**Type:** milestone
+**Details:** Added a controlled x402/EIP-3009 signing path that only runs after policy approval, guard detection, extracted payment-field validation, and manual review approval. Production remains disabled. In sandbox live mode, one reviewed payment for 6 XSGD successfully issued card reference `01KASWWW32768CB45GC6D84AR0` and settlement transaction `0xeb4c03a03054866e13b53885b8b29e1751b40e2403745e592daa50f60e1c36cf`. Balance moved from 30 XSGD to 24 XSGD. Runtime was returned to `DRY_RUN=true`. Verification: `npm test` passes with 17 tests, `npm run typecheck` passes, dashboard serves at `http://localhost:4020/`, and the decision log now contains the issued card receipt.

@@ -6,7 +6,14 @@ import { mandate } from "./mandate.config.js";
 import { evaluatePolicy } from "./policy.js";
 import { issueOneTimeCard } from "./cardIssuance.js";
 import { getXsgdBalance } from "./xsgd.js";
-import { appendDecision, getDecisionsNewestFirst, updateReviewStatus } from "./decisionLog.js";
+import {
+  appendDecision,
+  getDecisionsNewestFirst,
+  updateCardIssued,
+  updateReviewStatus,
+} from "./decisionLog.js";
+import { issueCardWithX402 } from "./x402.js";
+import type { ExtractedPaymentFields } from "./mcpPaymentExtractor.js";
 
 const app = express();
 app.use(express.json());
@@ -16,6 +23,7 @@ const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string
 
 let spentSoFar = 0;
 let dryRunMode = process.env.DRY_RUN !== "false";
+const CARDHOLDER_NAME = "Mandate Agent";
 
 function cardReferenceFor(
   card: Exclude<Awaited<ReturnType<typeof issueOneTimeCard>>, { status: "blocked_by_guard" }>
@@ -64,7 +72,14 @@ function findDecision(decisionId: string) {
   );
 }
 
-app.post("/review/:decisionId/approve", (req, res) => {
+function getExtractedPaymentFields(value: unknown): ExtractedPaymentFields | null {
+  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+    return null;
+  }
+  return value as ExtractedPaymentFields;
+}
+
+app.post("/review/:decisionId/approve", async (req, res) => {
   const decision = findDecision(req.params.decisionId);
 
   if (!decision) {
@@ -80,6 +95,47 @@ app.post("/review/:decisionId/approve", (req, res) => {
   if (decision.paymentValidationStatus !== "VALID") {
     res.status(409).json({ error: "Cannot approve invalid extracted payment fields" });
     return;
+  }
+
+  if (!dryRunMode) {
+    const fields = getExtractedPaymentFields(decision.extractedPaymentFields);
+
+    if (!fields?.cardApiUrl || fields.amountSgd === undefined) {
+      res.status(409).json({ error: "Validated payment fields are incomplete" });
+      return;
+    }
+
+    try {
+      const issued = await issueCardWithX402({
+        account,
+        cardApiUrl: fields.cardApiUrl,
+        amountSgd: fields.amountSgd,
+        cardholderName: CARDHOLDER_NAME,
+      });
+      const cardReference =
+        typeof issued.card.card_opaque_id === "string" ? issued.card.card_opaque_id : null;
+      const updated = updateCardIssued(
+        req.params.decisionId,
+        cardReference,
+        issued.receipt,
+        "Human reviewed validated fields. Mandate signed one x402 payment and issued a sandbox card."
+      );
+      spentSoFar += decision.amount;
+      res.json({
+        status: "CARD_ISSUED",
+        message: "Human review approved. Mandate signed one validated x402 payment.",
+        cardReference,
+        receipt: issued.receipt,
+        decision: updated,
+      });
+      return;
+    } catch (error) {
+      res.status(502).json({
+        status: "CARD_ISSUE_FAILED",
+        error: error instanceof Error ? error.message : String(error),
+      });
+      return;
+    }
   }
 
   const updated = updateReviewStatus(
