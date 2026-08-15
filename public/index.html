@@ -1,184 +1,488 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>Mandate — Agent Spend Control Plane</title>
-<style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    background: #0b0e14;
-    color: #e8ecf1;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    margin: 0;
-    padding: 32px;
-    font-size: 18px;
-  }
-  h1 { font-size: 28px; margin: 0 0 4px; }
-  .subtitle { color: #8a94a6; margin: 0 0 28px; font-size: 16px; }
-  .panel {
-    background: #12161f;
-    border: 1px solid #232a38;
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-  }
-  .stat-row { display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 16px; }
-  .stat { }
-  .stat .label { color: #8a94a6; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .stat .value { font-size: 32px; font-weight: 700; }
-  .bar-track {
-    width: 100%;
-    height: 20px;
-    background: #232a38;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #4ade80, #22c55e);
-    transition: width 0.3s ease;
-  }
-  .mandate-details { color: #8a94a6; font-size: 15px; margin-top: 12px; }
-  form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 8px; }
-  .field { display: flex; flex-direction: column; gap: 4px; }
-  .field label { font-size: 13px; color: #8a94a6; }
-  input, select {
-    background: #0b0e14;
-    border: 1px solid #333c4d;
-    color: #e8ecf1;
-    padding: 10px 12px;
-    border-radius: 8px;
-    font-size: 16px;
-  }
-  button {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 11px 20px;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  button:hover { background: #2563eb; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th, td { text-align: left; padding: 10px 12px; font-size: 15px; border-bottom: 1px solid #232a38; }
-  th { color: #8a94a6; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
-  .verdict-approve { color: #4ade80; font-weight: 700; }
-  .verdict-decline { color: #f87171; font-weight: 700; }
-  .reason { color: #f87171; font-family: monospace; font-size: 13px; }
-  .empty { color: #8a94a6; padding: 16px 0; }
-</style>
-</head>
-<body>
-  <h1>Mandate</h1>
-  <p class="subtitle">Agent spend control plane — the decline is the demo.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mandate</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #111315;
+        --panel: #1b2025;
+        --panel-2: #222932;
+        --text: #f3f5f7;
+        --muted: #aeb7c2;
+        --line: #343d47;
+        --good: #5bd48b;
+        --bad: #ff6b6b;
+        --warn: #f4c95d;
+        --accent: #64b5ff;
+      }
 
-  <div class="panel">
-    <div class="stat-row">
-      <div class="stat">
-        <div class="label">XSGD Balance</div>
-        <div class="value" id="balance">-</div>
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        background: var(--bg);
+        color: var(--text);
+        font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        letter-spacing: 0;
+      }
+
+      main {
+        width: min(1180px, calc(100% - 32px));
+        margin: 0 auto;
+        padding: 28px 0 40px;
+      }
+
+      header {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 16px;
+        margin-bottom: 18px;
+      }
+
+      h1,
+      h2 {
+        margin: 0;
+        font-weight: 750;
+      }
+
+      h1 {
+        font-size: 34px;
+      }
+
+      h2 {
+        font-size: 18px;
+      }
+
+      p {
+        margin: 6px 0 0;
+        color: var(--muted);
+      }
+
+      .badge {
+        display: inline-flex;
+        align-items: center;
+        min-height: 34px;
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 6px 10px;
+        color: var(--muted);
+        background: var(--panel);
+        font-size: 13px;
+        font-weight: 650;
+        white-space: nowrap;
+      }
+
+      .badge.warn {
+        color: #15130b;
+        border-color: var(--warn);
+        background: var(--warn);
+      }
+
+      .guard-banner {
+        display: none;
+        border: 1px solid #b98618;
+        background: #332710;
+        color: #fff4c9;
+        border-radius: 8px;
+        padding: 14px 16px;
+        margin-bottom: 18px;
+      }
+
+      .guard-banner strong {
+        display: block;
+        color: #ffe28a;
+        margin-bottom: 4px;
+      }
+
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+
+      section {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 18px;
+      }
+
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      .stat {
+        background: var(--panel-2);
+        border: 1px solid var(--line);
+        border-radius: 6px;
+        padding: 12px;
+        min-height: 82px;
+      }
+
+      .label {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        font-weight: 700;
+      }
+
+      .value {
+        margin-top: 8px;
+        font-size: 24px;
+        font-weight: 750;
+        overflow-wrap: anywhere;
+      }
+
+      .small {
+        font-size: 13px;
+        color: var(--muted);
+      }
+
+      .bar {
+        height: 14px;
+        border-radius: 999px;
+        background: #0e1114;
+        overflow: hidden;
+        border: 1px solid var(--line);
+        margin-top: 14px;
+      }
+
+      .bar-fill {
+        height: 100%;
+        width: 0%;
+        background: var(--accent);
+        transition: width 160ms ease;
+      }
+
+      form {
+        display: grid;
+        grid-template-columns: 1.2fr 0.8fr 1.4fr auto;
+        gap: 10px;
+        margin-top: 14px;
+      }
+
+      input,
+      button {
+        min-height: 44px;
+        border-radius: 6px;
+        border: 1px solid var(--line);
+        font: inherit;
+      }
+
+      input {
+        width: 100%;
+        background: #101418;
+        color: var(--text);
+        padding: 0 12px;
+      }
+
+      button {
+        padding: 0 16px;
+        background: var(--accent);
+        color: #071018;
+        font-weight: 800;
+        cursor: pointer;
+      }
+
+      .result {
+        min-height: 22px;
+        margin-top: 10px;
+        color: var(--muted);
+        overflow-wrap: anywhere;
+      }
+
+      .table-wrap {
+        margin-top: 14px;
+        overflow: auto;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        min-width: 900px;
+      }
+
+      th,
+      td {
+        padding: 12px;
+        border-bottom: 1px solid var(--line);
+        text-align: left;
+        vertical-align: top;
+        font-size: 14px;
+      }
+
+      th {
+        color: var(--muted);
+        background: #171b20;
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+
+      tr:last-child td {
+        border-bottom: 0;
+      }
+
+      .pill {
+        display: inline-flex;
+        align-items: center;
+        min-height: 28px;
+        border-radius: 999px;
+        padding: 4px 10px;
+        font-weight: 800;
+        font-size: 12px;
+      }
+
+      .approve {
+        color: #062012;
+        background: var(--good);
+      }
+
+      .decline {
+        color: #2b0707;
+        background: var(--bad);
+      }
+
+      .suspicious {
+        background: #3a2b11;
+      }
+
+      code {
+        color: #c9e5ff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        overflow-wrap: anywhere;
+      }
+
+      @media (max-width: 860px) {
+        header,
+        .grid {
+          grid-template-columns: 1fr;
+          display: grid;
+        }
+
+        .stats,
+        form {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <h1>Mandate</h1>
+          <p>Agent spend control plane. The decline is the demo.</p>
+        </div>
+        <div id="modeBadge" class="badge">Loading</div>
+      </header>
+
+      <div id="guardBanner" class="guard-banner">
+        <strong>Prompt injection detected. Wallet keys never touched.</strong>
+        <span id="guardBannerText">Mandate blocked a suspicious MCP response before signing.</span>
       </div>
-      <div class="stat">
-        <div class="label">Spent / Cap</div>
-        <div class="value" id="spent">-</div>
+
+      <div class="grid">
+        <section>
+          <h2>Status</h2>
+          <p class="small">Live Fuji XSGD balance and current mandate headroom.</p>
+          <div class="stats">
+            <div class="stat">
+              <div class="label">Balance</div>
+              <div id="balance" class="value">--</div>
+            </div>
+            <div class="stat">
+              <div class="label">Spent</div>
+              <div id="spent" class="value">--</div>
+            </div>
+            <div class="stat">
+              <div class="label">Remaining</div>
+              <div id="remaining" class="value">--</div>
+            </div>
+            <div class="stat">
+              <div class="label">Injections Blocked</div>
+              <div id="blockedCount" class="value">0</div>
+            </div>
+          </div>
+          <div class="bar" aria-label="Spend headroom">
+            <div id="barFill" class="bar-fill"></div>
+          </div>
+          <p id="mandateDetails" class="small"></p>
+          <p id="wallet" class="small"></p>
+        </section>
+
+        <section>
+          <h2>Test Intent</h2>
+          <p class="small">Use an allowlisted merchant for approval, or try a blocked merchant or high amount.</p>
+          <form id="intentForm">
+            <input id="merchant" name="merchant" value="mikes-store" autocomplete="off" aria-label="Merchant" />
+            <input id="amount" name="amount" type="number" step="0.01" min="0" value="10" aria-label="Amount" />
+            <input id="item" name="item" value="widget" autocomplete="off" aria-label="Item" />
+            <button type="submit">Submit</button>
+          </form>
+          <div id="formResult" class="result"></div>
+        </section>
       </div>
-      <div class="stat">
-        <div class="label">Headroom</div>
-        <div class="value" id="headroom">-</div>
-      </div>
-    </div>
-    <div class="bar-track"><div class="bar-fill" id="bar" style="width:0%"></div></div>
-    <div class="mandate-details" id="mandate-details">Loading mandate…</div>
-  </div>
 
-  <div class="panel">
-    <form id="intent-form">
-      <div class="field">
-        <label for="merchant">Merchant</label>
-        <input id="merchant" name="merchant" value="acme-store" />
-      </div>
-      <div class="field">
-        <label for="amount">Amount (XSGD)</label>
-        <input id="amount" name="amount" type="number" value="10" />
-      </div>
-      <div class="field">
-        <label for="item">Item</label>
-        <input id="item" name="item" value="widget" />
-      </div>
-      <button type="submit">Submit intent</button>
-    </form>
-  </div>
+      <section style="margin-top: 16px">
+        <h2>Decision Log</h2>
+        <p class="small">Newest first. Every approve and decline is logged with a reason code.</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Verdict</th>
+                <th>Reason</th>
+                <th>Merchant</th>
+                <th>Amount</th>
+                <th>Item</th>
+                <th>Card</th>
+                <th>Guard Patterns</th>
+              </tr>
+            </thead>
+            <tbody id="decisionRows">
+              <tr>
+                <td colspan="8">Loading decisions</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
 
-  <div class="panel">
-    <h2 style="margin-top:0;">Decision Log</h2>
-    <table id="log-table">
-      <thead>
-        <tr><th>Time</th><th>Merchant</th><th>Amount</th><th>Item</th><th>Verdict</th><th>Reason / Card</th></tr>
-      </thead>
-      <tbody id="log-body"></tbody>
-    </table>
-    <div class="empty" id="log-empty" style="display:none;">No decisions yet.</div>
-  </div>
+    <script>
+      const els = {
+        modeBadge: document.querySelector("#modeBadge"),
+        guardBanner: document.querySelector("#guardBanner"),
+        guardBannerText: document.querySelector("#guardBannerText"),
+        balance: document.querySelector("#balance"),
+        spent: document.querySelector("#spent"),
+        remaining: document.querySelector("#remaining"),
+        blockedCount: document.querySelector("#blockedCount"),
+        barFill: document.querySelector("#barFill"),
+        mandateDetails: document.querySelector("#mandateDetails"),
+        wallet: document.querySelector("#wallet"),
+        rows: document.querySelector("#decisionRows"),
+        form: document.querySelector("#intentForm"),
+        formResult: document.querySelector("#formResult"),
+      };
 
-<script>
-async function loadStatus() {
-  const res = await fetch("/status");
-  const s = await res.json();
-  document.getElementById("balance").textContent = s.balance != null ? s.balance + " XSGD" : "n/a";
-  document.getElementById("spent").textContent = s.spentSoFar + " / " + s.mandate.capTotal + " XSGD";
-  document.getElementById("headroom").textContent = s.headroom + " XSGD";
-  const pct = Math.min(100, (s.spentSoFar / s.mandate.capTotal) * 100);
-  document.getElementById("bar").style.width = pct + "%";
-  document.getElementById("mandate-details").textContent =
-    "Per-transaction limit: " + s.mandate.perTransactionLimit + " XSGD · " +
-    "Allowlist: " + s.mandate.merchantAllowlist.join(", ") + " · " +
-    "Expires: " + new Date(s.mandate.expiresAt).toLocaleString();
-}
+      function formatXsgd(value) {
+        if (value === null || value === undefined || Number.isNaN(Number(value))) return "--";
+        return `${Number(value).toFixed(2)} XSGD`;
+      }
 
-async function loadDecisions() {
-  const res = await fetch("/decisions");
-  const decisions = await res.json();
-  const body = document.getElementById("log-body");
-  const empty = document.getElementById("log-empty");
-  body.innerHTML = "";
-  empty.style.display = decisions.length === 0 ? "block" : "none";
-  for (const d of decisions) {
-    const tr = document.createElement("tr");
-    const verdictClass = d.verdict === "APPROVE" ? "verdict-approve" : "verdict-decline";
-    const detail = d.verdict === "APPROVE" ? (d.cardReference || "-") : d.reasonCode;
-    tr.innerHTML =
-      "<td>" + new Date(d.timestamp).toLocaleTimeString() + "</td>" +
-      "<td>" + d.merchant + "</td>" +
-      "<td>" + d.amount + "</td>" +
-      "<td>" + d.item + "</td>" +
-      "<td class='" + verdictClass + "'>" + d.verdict + "</td>" +
-      "<td class='reason'>" + detail + "</td>";
-    body.appendChild(tr);
-  }
-}
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
 
-async function refresh() {
-  await Promise.all([loadStatus(), loadDecisions()]);
-}
+      function renderStatus(status) {
+        const spent = Number(status.spentSoFar ?? 0);
+        const cap = Number(status.mandate?.capTotal ?? 0);
+        const remaining = Math.max(0, cap - spent);
+        const pct = cap > 0 ? Math.min(100, Math.max(0, (spent / cap) * 100)) : 0;
 
-document.getElementById("intent-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const merchant = document.getElementById("merchant").value;
-  const amount = Number(document.getElementById("amount").value);
-  const item = document.getElementById("item").value;
-  await fetch("/intent", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ merchant, amount, item }),
-  });
-  await refresh();
-});
+        els.balance.textContent = formatXsgd(status.balance);
+        els.spent.textContent = formatXsgd(spent);
+        els.remaining.textContent = formatXsgd(remaining);
+        els.barFill.style.width = `${pct}%`;
+        els.modeBadge.textContent = status.dryRun ? "DRY RUN: no live charge" : "LIVE MCP CALLS";
+        els.modeBadge.classList.toggle("warn", !status.dryRun);
+        els.mandateDetails.textContent =
+          `Cap ${formatXsgd(cap)}. Per transaction ${formatXsgd(status.mandate?.perTransactionLimit)}. ` +
+          `Allowlist: ${(status.mandate?.merchantAllowlist ?? []).join(", ")}.`;
+        els.wallet.innerHTML = `Wallet: <code>${escapeHtml(status.address)}</code>`;
+      }
 
-refresh();
-setInterval(refresh, 5000);
-</script>
-</body>
+      function renderDecisions(decisions) {
+        const suspicious = decisions.filter((d) => d.reasonCode === "SUSPICIOUS_MCP_RESPONSE");
+        els.blockedCount.textContent = String(suspicious.length);
+        els.guardBanner.style.display = suspicious.length > 0 ? "block" : "none";
+        if (suspicious.length > 0) {
+          els.guardBannerText.textContent =
+            `${suspicious.length} suspicious MCP response${suspicious.length === 1 ? "" : "s"} blocked before signing.`;
+        }
+
+        if (decisions.length === 0) {
+          els.rows.innerHTML = '<tr><td colspan="8">No decisions yet</td></tr>';
+          return;
+        }
+
+        els.rows.innerHTML = decisions
+          .map((d) => {
+            const isSuspicious = d.reasonCode === "SUSPICIOUS_MCP_RESPONSE";
+            const verdictClass = d.verdict === "APPROVE" ? "approve" : "decline";
+            const time = d.timestamp ? new Date(d.timestamp).toLocaleTimeString() : "--";
+            return `
+              <tr class="${isSuspicious ? "suspicious" : ""}">
+                <td>${escapeHtml(time)}</td>
+                <td><span class="pill ${verdictClass}">${escapeHtml(d.verdict)}</span></td>
+                <td><code>${escapeHtml(d.reasonCode ?? "-")}</code></td>
+                <td>${escapeHtml(d.merchant)}</td>
+                <td>${formatXsgd(d.amount)}</td>
+                <td>${escapeHtml(d.item)}</td>
+                <td><code>${escapeHtml(d.cardReference ?? "-")}</code></td>
+                <td><code>${escapeHtml((d.guardPatterns ?? []).join(", "))}</code></td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
+      async function refresh() {
+        const [statusRes, decisionsRes] = await Promise.all([fetch("/status"), fetch("/decisions")]);
+        if (!statusRes.ok || !decisionsRes.ok) {
+          throw new Error("Failed to load dashboard data");
+        }
+        renderStatus(await statusRes.json());
+        renderDecisions(await decisionsRes.json());
+      }
+
+      els.form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        els.formResult.textContent = "Submitting...";
+
+        const body = {
+          merchant: document.querySelector("#merchant").value,
+          amount: Number(document.querySelector("#amount").value),
+          item: document.querySelector("#item").value,
+        };
+
+        try {
+          const res = await fetch("/intent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const payload = await res.json();
+          els.formResult.innerHTML = `Result: <code>${escapeHtml(JSON.stringify(payload))}</code>`;
+          await refresh();
+        } catch (error) {
+          els.formResult.textContent = error instanceof Error ? error.message : String(error);
+        }
+      });
+
+      refresh().catch((error) => {
+        els.rows.innerHTML = `<tr><td colspan="8">${escapeHtml(error.message)}</td></tr>`;
+      });
+      setInterval(() => refresh().catch(() => {}), 5000);
+    </script>
+  </body>
 </html>

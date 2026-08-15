@@ -1,34 +1,55 @@
 import type { Account } from "viem";
 import { getCardChallenge } from "./mcpCardClient.js";
-import { requestX402Challenge, signPaymentAuthorization, submitPayment } from "./x402.js";
-import type { CardIssueResult } from "./cardTypes.js";
+import { guardPayload } from "./mcpGuard.js";
 
-export type IssueCardOutcome =
-  | { status: "dry_run"; url: string; body: unknown; paymentSignatureHeader: string }
-  | { status: "issued"; card: CardIssueResult }
-  | { status: "error"; message: string };
+interface CardIntent {
+  merchant: string;
+  amount: number;
+}
+
+const CARDHOLDER_NAME = "Mandate Agent";
+const MIN_AMOUNT_SGD = 5;
+const MAX_AMOUNT_SGD = 30;
+
+function clampAmount(amount: number): number {
+  const clamped = Math.min(Math.max(amount, MIN_AMOUNT_SGD), MAX_AMOUNT_SGD);
+  if (clamped !== amount) {
+    console.warn(
+      `issueOneTimeCard: amount ${amount} clamped to ${clamped} (allowed range ${MIN_AMOUNT_SGD}-${MAX_AMOUNT_SGD})`
+    );
+  }
+  return clamped;
+}
 
 export async function issueOneTimeCard(
-  intent: { merchant: string; amount: number; item: string },
+  intent: CardIntent,
   account: Account,
-  dryRun: boolean,
-): Promise<IssueCardOutcome> {
-  try {
-    const cardholderName = "Mandate Agent";
-    const challenge = await getCardChallenge(account.address, cardholderName, intent.amount);
-    const x402Challenge = await requestX402Challenge(challenge.url, challenge.body);
-    const requirement = x402Challenge.accepts[0];
-    if (!requirement) throw new Error("x402 challenge had no acceptable payment methods");
+  dryRun: boolean
+): Promise<
+  | { status: "dry_run"; wouldSend: { walletAddress: string; cardholderName: string; amountSgd: number } }
+  | { status: "challenge_received"; challenge: unknown }
+  | { status: "blocked_by_guard"; patterns: string[]; excerpts: string[] }
+> {
+  const args = {
+    walletAddress: account.address,
+    cardholderName: CARDHOLDER_NAME,
+    amountSgd: clampAmount(intent.amount),
+  };
 
-    const { paymentSignatureHeader } = await signPaymentAuthorization(account, requirement);
-
-    if (dryRun) {
-      return { status: "dry_run", url: challenge.url, body: challenge.body, paymentSignatureHeader };
-    }
-
-    const card = await submitPayment(challenge.url, challenge.body, paymentSignatureHeader);
-    return { status: "issued", card };
-  } catch (err) {
-    return { status: "error", message: err instanceof Error ? err.message : String(err) };
+  if (dryRun) {
+    return { status: "dry_run", wouldSend: args };
   }
+
+  const challenge = await getCardChallenge(args);
+  const guardResult = guardPayload(challenge);
+
+  if (guardResult.verdict === "SUSPICIOUS") {
+    return {
+      status: "blocked_by_guard",
+      patterns: guardResult.patterns,
+      excerpts: guardResult.excerpts,
+    };
+  }
+
+  return { status: "challenge_received", challenge: guardResult.safe };
 }
