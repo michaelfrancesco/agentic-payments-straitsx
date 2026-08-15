@@ -28,7 +28,14 @@ function connect(): Promise<Client> {
       }
       const client = new Client({ name: "mandate-card-client", version: "0.1.0" });
       const transport = new SSEClientTransport(new URL(endpoint));
-      await client.connect(transport);
+      try {
+        await client.connect(transport);
+      } catch (error) {
+        clientPromise = null;
+        throw new Error(
+          `MCP card gateway connection failed: ${error instanceof Error ? error.message : String(error)}`
+        );
+      }
       return client;
     })();
   }
@@ -42,14 +49,21 @@ export async function getCardChallenge({
 }: GetCardChallengeArgs): Promise<unknown> {
   const client = await connect();
 
-  const result = await client.callTool({
-    name: "get_card_sandbox",
-    arguments: {
-      wallet_address: walletAddress,
-      cardholder_name: cardholderName,
-      amount_sgd: amountSgd,
-    },
-  });
+  let result: unknown;
+  try {
+    result = await client.callTool({
+      name: "get_card_sandbox",
+      arguments: {
+        wallet_address: walletAddress,
+        cardholder_name: cardholderName,
+        amount_sgd: amountSgd,
+      },
+    });
+  } catch (error) {
+    throw new Error(
+      `MCP card gateway tool call failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 
   const toolResult = result as ToolResultWithContent;
 

@@ -4,6 +4,12 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Mandate</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
       tailwind.config = {
@@ -25,6 +31,9 @@
             boxShadow: {
               grid: "inset 0 1px 0 rgba(255,255,255,0.04)",
             },
+            fontFamily: {
+              mono: ['"IBM Plex Mono"', "ui-monospace", "monospace"],
+            },
           },
         },
       };
@@ -40,6 +49,24 @@
           linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
           hsl(240 10% 3.9%);
         background-size: 44px 44px;
+      }
+
+      .evidence-strip {
+        border-left: 3px solid transparent;
+        border-image: repeating-linear-gradient(
+          -45deg,
+          hsl(47 96% 53%) 0,
+          hsl(47 96% 53%) 6px,
+          transparent 6px,
+          transparent 12px
+        );
+        border-image-slice: 1;
+      }
+
+      .redacted-text {
+        text-decoration: line-through;
+        text-decoration-color: hsl(47 96% 53% / 0.7);
+        text-decoration-thickness: 2px;
       }
     </style>
   </head>
@@ -60,6 +87,20 @@
             <p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
               Agent spend control plane. A purchase is checked against the mandate before any card can be issued.
             </p>
+            <div class="mt-4 flex flex-wrap items-center gap-2">
+              <span class="rounded-md border border-border bg-zinc-950 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                ⛓ Avalanche Fuji C-Chain
+              </span>
+              <span class="rounded-md border border-border bg-zinc-950 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                💳 x402 payment protocol
+              </span>
+              <span class="rounded-md border border-border bg-zinc-950 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                ✍ EIP-3009 gasless authorization
+              </span>
+              <span class="rounded-md border border-border bg-zinc-950 px-2.5 py-1 text-[11px] font-medium text-muted-foreground">
+                🏦 StraitsX XSGD + MCP card gateway
+              </span>
+            </div>
           </div>
 
           <div class="rounded-lg border border-border bg-zinc-950 p-4">
@@ -99,9 +140,19 @@
               Wallet keys never touched.
             </p>
           </div>
-          <span class="rounded-md bg-accent px-2.5 py-1 text-xs font-bold text-black">
-            BLOCKED BEFORE SIGNING
-          </span>
+          <div class="flex items-center gap-2">
+            <span class="rounded-md bg-accent px-2.5 py-1 text-xs font-bold text-black">
+              BLOCKED BEFORE SIGNING
+            </span>
+            <button
+              id="guardBannerClose"
+              type="button"
+              aria-label="Dismiss"
+              class="rounded-md border border-accent/40 px-2 py-1 text-xs font-semibold text-amber-100 hover:bg-accent/20"
+            >
+              ✕
+            </button>
+          </div>
         </div>
       </section>
 
@@ -151,10 +202,14 @@
               <p class="text-xs uppercase text-muted-foreground">Per transaction</p>
               <p id="txnLimit" class="mt-1 font-medium text-white">--</p>
             </div>
-            <div class="rounded-md border border-border bg-muted/50 p-3">
-              <p class="text-xs uppercase text-muted-foreground">Allowlist</p>
-              <p id="allowlist" class="mt-1 font-medium text-white">--</p>
-            </div>
+            <button
+              id="allowlistCard"
+              type="button"
+              class="rounded-md border border-border bg-muted/50 p-3 text-left hover:border-accent/60 hover:bg-muted"
+            >
+              <p class="text-xs uppercase text-muted-foreground">Allowlist · click to manage</p>
+              <p id="allowlist" class="mt-1 truncate font-medium text-white">--</p>
+            </button>
             <div class="rounded-md border border-border bg-muted/50 p-3">
               <p class="text-xs uppercase text-muted-foreground">Expires</p>
               <p id="expires" class="mt-1 font-medium text-white">--</p>
@@ -198,7 +253,7 @@
               />
             </div>
 
-            <div class="grid grid-cols-3 gap-2">
+            <div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
               <button
                 type="button"
                 data-preset="approve"
@@ -220,7 +275,17 @@
               >
                 Limit
               </button>
+              <button
+                type="button"
+                data-preset="cap"
+                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white hover:bg-zinc-800"
+              >
+                Cap
+              </button>
             </div>
+            <p class="text-[11px] leading-4 text-muted-foreground">
+              Approve, Merchant (blocked), Limit (over per-transaction), Cap (run Approve a few times first, cap only trips once prior spend plus this amount passes 25 XSGD).
+            </p>
 
             <button
               id="submitIntent"
@@ -230,7 +295,16 @@
               Evaluate Intent
             </button>
           </form>
-          <div id="formResult" class="mt-4 min-h-12 rounded-md border border-border bg-zinc-950 p-3 text-sm text-muted-foreground">
+
+          <div id="formTabs" class="mt-4 hidden gap-2">
+            <button id="formTabFormatted" data-form-tab="formatted" type="button" class="h-8 rounded-md bg-white px-3 text-xs font-semibold text-black">
+              Formatted
+            </button>
+            <button id="formTabRaw" data-form-tab="raw" type="button" class="h-8 rounded-md border border-border bg-zinc-900 px-3 text-xs font-semibold text-white hover:bg-zinc-800">
+              Raw
+            </button>
+          </div>
+          <div id="formResult" class="mt-3 min-h-12 rounded-md border border-border bg-zinc-950 p-3 text-sm text-muted-foreground">
             Ready.
           </div>
         </div>
@@ -247,33 +321,101 @@
           </span>
         </div>
 
-        <div class="mt-4 overflow-hidden rounded-lg border border-border">
-          <div class="overflow-x-auto">
-            <table class="w-full min-w-[980px] border-collapse text-sm">
-              <thead class="bg-zinc-950 text-xs uppercase text-muted-foreground">
-                <tr>
-                  <th class="px-3 py-3 text-left font-medium">Time</th>
-                  <th class="px-3 py-3 text-left font-medium">Verdict</th>
-                  <th class="px-3 py-3 text-left font-medium">Reason</th>
-                  <th class="px-3 py-3 text-left font-medium">Merchant</th>
-                  <th class="px-3 py-3 text-left font-medium">Amount</th>
-                  <th class="px-3 py-3 text-left font-medium">Card</th>
-                  <th class="px-3 py-3 text-left font-medium">Review</th>
-                  <th class="px-3 py-3 text-left font-medium">Extracted fields</th>
-                  <th class="px-3 py-3 text-left font-medium">Ignored instructions</th>
-                  <th class="px-3 py-3 text-left font-medium">Action</th>
-                </tr>
-              </thead>
-              <tbody id="decisionRows" class="divide-y divide-border bg-black">
-                <tr>
-                  <td colspan="10" class="px-3 py-6 text-center text-muted-foreground">Loading decisions</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+        <div class="mt-4 overflow-x-auto rounded-lg border border-border">
+          <table class="w-full min-w-[880px] table-fixed text-sm">
+            <colgroup>
+              <col class="w-24" />
+              <col class="w-24" />
+              <col class="w-40" />
+              <col class="w-32" />
+              <col class="w-24" />
+              <col class="w-48" />
+              <col class="w-36" />
+              <col class="w-24" />
+            </colgroup>
+            <thead class="bg-zinc-950 text-xs uppercase text-muted-foreground">
+              <tr>
+                <th class="px-3 py-3 text-left font-medium">Time</th>
+                <th class="px-3 py-3 text-left font-medium">Verdict</th>
+                <th class="px-3 py-3 text-left font-medium">Reason</th>
+                <th class="px-3 py-3 text-left font-medium">Merchant</th>
+                <th class="px-3 py-3 text-left font-medium">Amount</th>
+                <th class="px-3 py-3 text-left font-medium">Card</th>
+                <th class="px-3 py-3 text-left font-medium">Review</th>
+                <th class="px-3 py-3 text-left font-medium">Details</th>
+              </tr>
+            </thead>
+            <tbody id="decisionRows" class="divide-y divide-border bg-black">
+              <tr>
+                <td colspan="8" class="px-3 py-6 text-center text-muted-foreground">Loading decisions</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </section>
     </main>
+
+    <div id="detailModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4 font-mono">
+      <div class="max-h-[88vh] w-full max-w-2xl overflow-y-auto rounded-lg border border-border bg-zinc-950 shadow-grid">
+        <div class="sticky top-0 z-10 border-b border-border bg-zinc-950/95 px-5 py-4 backdrop-blur">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Decision file</p>
+              <p id="detailSubtitle" class="mt-1 text-base font-medium text-white">--</p>
+            </div>
+            <button id="detailClose" type="button" class="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-white hover:bg-zinc-800">
+              Close
+            </button>
+          </div>
+
+          <div class="mt-3 flex gap-2">
+            <button id="detailTabFormatted" data-detail-tab="formatted" class="h-7 rounded-md bg-white px-3 text-[11px] font-semibold uppercase tracking-wide text-black">
+              Formatted
+            </button>
+            <button id="detailTabRaw" data-detail-tab="raw" class="h-7 rounded-md border border-border bg-zinc-900 px-3 text-[11px] font-semibold uppercase tracking-wide text-white hover:bg-zinc-800">
+              Raw
+            </button>
+          </div>
+        </div>
+
+        <div id="detailFormatted" class="space-y-4 p-5"></div>
+        <pre id="detailRaw" class="hidden whitespace-pre-wrap break-words p-5 text-xs text-muted-foreground"></pre>
+      </div>
+    </div>
+
+    <div id="allowlistModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4 font-mono">
+      <div class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-zinc-950 shadow-grid">
+        <div class="sticky top-0 z-10 border-b border-border bg-zinc-950/95 px-5 py-4 backdrop-blur">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Merchant registry</p>
+              <p class="mt-1 text-sm text-muted-foreground">Only these merchants can be paid. Changes apply immediately.</p>
+            </div>
+            <button id="allowlistClose" type="button" class="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-white hover:bg-zinc-800">
+              Close
+            </button>
+          </div>
+        </div>
+
+        <div class="p-5">
+          <div id="allowlistItems" class="space-y-2"></div>
+
+          <form id="allowlistAddForm" class="mt-4 flex gap-2">
+            <input
+              id="allowlistAddInput"
+              type="text"
+              placeholder="e.g. Amazon SG"
+              autocomplete="off"
+              class="h-9 flex-1 rounded-md border border-input bg-zinc-900 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+            />
+            <button type="submit" class="h-9 rounded-md bg-white px-4 text-[11px] font-semibold uppercase tracking-wide text-black hover:bg-zinc-200">
+              Add
+            </button>
+          </form>
+          <p id="allowlistError" class="mt-2 hidden text-xs text-decline"></p>
+        </div>
+      </div>
+    </div>
 
     <script>
       const els = {
@@ -284,6 +426,7 @@
         modeCopy: document.querySelector("#modeCopy"),
         guardBanner: document.querySelector("#guardBanner"),
         guardBannerText: document.querySelector("#guardBannerText"),
+        guardBannerClose: document.querySelector("#guardBannerClose"),
         balance: document.querySelector("#balance"),
         spent: document.querySelector("#spent"),
         remaining: document.querySelector("#remaining"),
@@ -299,9 +442,37 @@
         form: document.querySelector("#intentForm"),
         formResult: document.querySelector("#formResult"),
         submitIntent: document.querySelector("#submitIntent"),
+        formTabs: document.querySelector("#formTabs"),
+        formTabFormatted: document.querySelector("#formTabFormatted"),
+        formTabRaw: document.querySelector("#formTabRaw"),
+        detailModal: document.querySelector("#detailModal"),
+        detailClose: document.querySelector("#detailClose"),
+        detailSubtitle: document.querySelector("#detailSubtitle"),
+        detailFormatted: document.querySelector("#detailFormatted"),
+        detailRaw: document.querySelector("#detailRaw"),
+        detailTabFormatted: document.querySelector("#detailTabFormatted"),
+        detailTabRaw: document.querySelector("#detailTabRaw"),
+        allowlistCard: document.querySelector("#allowlistCard"),
+        allowlistModal: document.querySelector("#allowlistModal"),
+        allowlistClose: document.querySelector("#allowlistClose"),
+        allowlistItems: document.querySelector("#allowlistItems"),
+        allowlistAddForm: document.querySelector("#allowlistAddForm"),
+        allowlistAddInput: document.querySelector("#allowlistAddInput"),
+        allowlistError: document.querySelector("#allowlistError"),
       };
 
       let currentDryRun = true;
+      let currentDecisions = [];
+      let lastFormResult = null;
+      let formTab = "formatted";
+      let detailTab = "formatted";
+      let activeDecisionId = null;
+      let guardBannerDismissedAtCount = 0;
+      let currentMandate = null;
+      let editingMerchant = null;
+
+      const activeTabClass = "h-8 rounded-md bg-white px-3 text-xs font-semibold text-black";
+      const inactiveTabClass = "h-8 rounded-md border border-border bg-zinc-900 px-3 text-xs font-semibold text-white hover:bg-zinc-800";
 
       function formatXsgd(value) {
         if (value === null || value === undefined || Number.isNaN(Number(value))) return "--";
@@ -352,6 +523,8 @@
         const remaining = Math.max(0, cap - spent);
         const pct = cap > 0 ? Math.min(100, Math.max(0, (spent / cap) * 100)) : 0;
 
+        currentMandate = status.mandate ?? null;
+
         renderMode(Boolean(status.dryRun));
         els.balance.textContent = formatXsgd(status.balance);
         els.spent.textContent = formatXsgd(spent);
@@ -360,18 +533,32 @@
         els.barFill.style.width = `${pct}%`;
         els.capLabel.textContent = `${formatXsgd(spent)} of ${formatXsgd(cap)}`;
         els.txnLimit.textContent = formatXsgd(status.mandate?.perTransactionLimit);
-        els.allowlist.textContent = (status.mandate?.merchantAllowlist ?? []).join(", ");
+        els.allowlist.textContent = (status.mandate?.merchantAllowlist ?? []).join(", ") || "none";
         els.expires.textContent = status.mandate?.expiresAt
           ? new Date(status.mandate.expiresAt).toLocaleDateString([], { month: "short", day: "2-digit" })
           : "--";
         els.wallet.textContent = status.address ?? "Wallet unavailable";
+
+        if (!els.allowlistModal.classList.contains("hidden")) {
+          renderAllowlistModal();
+        }
+      }
+
+      function decisionKey(d) {
+        return d.id ?? d.timestamp;
+      }
+
+      function findDecision(id) {
+        return currentDecisions.find((d) => decisionKey(d) === id);
       }
 
       function renderDecisions(decisions) {
+        currentDecisions = decisions;
         const suspicious = decisions.filter((d) => d.reasonCode === "SUSPICIOUS_MCP_RESPONSE");
         els.blockedCount.textContent = String(suspicious.length);
         els.logCount.textContent = `${decisions.length} decision${decisions.length === 1 ? "" : "s"}`;
-        els.guardBanner.classList.toggle("hidden", suspicious.length === 0);
+        const shouldShowBanner = suspicious.length > 0 && suspicious.length > guardBannerDismissedAtCount;
+        els.guardBanner.classList.toggle("hidden", !shouldShowBanner);
         if (suspicious.length > 0) {
           els.guardBannerText.textContent =
             `${suspicious.length} suspicious MCP response${suspicious.length === 1 ? "" : "s"} blocked before signing.`;
@@ -379,35 +566,42 @@
 
         if (decisions.length === 0) {
           els.rows.innerHTML =
-            '<tr><td colspan="10" class="px-3 py-6 text-center text-muted-foreground">No decisions yet</td></tr>';
+            '<tr><td colspan="8" class="px-3 py-6 text-center text-muted-foreground">No decisions yet</td></tr>';
           return;
         }
 
         els.rows.innerHTML = decisions
           .map((d) => {
-            const isSuspicious = d.reasonCode === "SUSPICIOUS_MCP_RESPONSE";
+            const isPendingReview =
+              d.reasonCode === "SUSPICIOUS_MCP_RESPONSE" && d.reviewStatus === "PENDING_REVIEW";
             const verdictClasses =
               d.verdict === "APPROVE"
                 ? "border-approve/40 bg-approve/15 text-approve"
-                : isSuspicious
+                : isPendingReview
                   ? "border-accent/50 bg-accent/15 text-accent"
                   : "border-decline/40 bg-decline/15 text-decline";
-            const rowClass = isSuspicious ? "bg-accent/10" : "bg-black";
-            const extracted = d.extractedPaymentFields
-              ? JSON.stringify(d.extractedPaymentFields)
-              : "-";
-            const ignored = (d.guardExcerpts ?? d.guardPatterns ?? []).slice(0, 2).join(" | ");
+            const rowClass = isPendingReview ? "bg-accent/10" : "bg-black";
             const review = d.reviewStatus
               ? `${d.reviewStatus}${d.paymentValidationStatus ? `, fields ${d.paymentValidationStatus}` : ""}`
               : "-";
-            const reviewId = encodeURIComponent(d.id ?? d.timestamp);
-            const actions =
-              d.reviewStatus === "PENDING_REVIEW"
-                ? `<div class="flex min-w-48 gap-2">
-                    <button data-review-action="approve" data-review-id="${escapeHtml(reviewId)}" class="h-8 rounded-md bg-white px-3 text-xs font-semibold text-black hover:bg-zinc-200">Approve review</button>
-                    <button data-review-action="decline" data-review-id="${escapeHtml(reviewId)}" class="h-8 rounded-md border border-border bg-zinc-950 px-3 text-xs font-semibold text-white hover:bg-zinc-800">Decline</button>
-                  </div>`
-                : `<span class="text-xs text-muted-foreground">${escapeHtml(d.reviewStatus ? "Reviewed" : "-")}</span>`;
+            const reviewId = escapeHtml(decisionKey(d));
+            const receipt = d.issueReceipt;
+            const cardCell = receipt?.settlementTx
+              ? `<div class="max-w-full space-y-1">
+                  <code class="block truncate text-xs text-white" title="${escapeHtml(d.cardReference ?? "-")}">${escapeHtml(d.cardReference ?? "-")}</code>
+                  <div>
+                    <a href="https://testnet.snowtrace.io/tx/${escapeHtml(receipt.settlementTx)}" target="_blank" rel="noopener"
+                       class="block truncate text-[11px] font-medium text-accent hover:underline">
+                      View settlement ↗
+                    </a>
+                  </div>
+                  <p class="truncate text-[11px] text-muted-foreground">Fuji · chain ${escapeHtml(receipt.chainId)}</p>
+                </div>`
+              : `<code class="block truncate text-xs text-muted-foreground" title="${escapeHtml(d.cardReference ?? "-")}">${escapeHtml(d.cardReference ?? "-")}</code>`;
+            const viewButton =
+              `<button data-view-id="${reviewId}" class="h-8 rounded-md border border-border bg-zinc-900 px-3 text-xs font-semibold text-white hover:bg-zinc-800">
+                 View${d.reviewStatus === "PENDING_REVIEW" ? " · review" : ""}
+               </button>`;
 
             return `
               <tr class="${rowClass}">
@@ -417,19 +611,431 @@
                     ${escapeHtml(d.verdict)}
                   </span>
                 </td>
-                <td class="px-3 py-3"><code class="text-xs text-white">${escapeHtml(d.reasonCode ?? "CARD_ISSUED")}</code></td>
-                <td class="px-3 py-3 text-white">${escapeHtml(d.merchant)}</td>
+                <td class="truncate px-3 py-3" title="${escapeHtml(d.reasonCode ?? "CARD_ISSUED")}"><code class="text-xs text-white">${escapeHtml(d.reasonCode ?? "CARD_ISSUED")}</code></td>
+                <td class="truncate px-3 py-3 text-white" title="${escapeHtml(d.merchant)}">${escapeHtml(d.merchant)}</td>
                 <td class="whitespace-nowrap px-3 py-3 text-white">${formatXsgd(d.amount)}</td>
-                <td class="px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(d.cardReference ?? "-")}</code></td>
-                <td class="px-3 py-3"><code class="text-xs text-white">${escapeHtml(review)}</code></td>
-                <td class="max-w-md px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(extracted)}</code></td>
-                <td class="max-w-lg px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(ignored)}</code></td>
-                <td class="px-3 py-3">${actions}</td>
+                <td class="overflow-hidden px-3 py-3">${cardCell}</td>
+                <td class="truncate px-3 py-3" title="${escapeHtml(review)}"><code class="text-xs text-white">${escapeHtml(review)}</code></td>
+                <td class="px-3 py-3">${viewButton}</td>
               </tr>
             `;
           })
           .join("");
       }
+
+      function kv(label, value) {
+        return `<div class="flex items-start justify-between gap-3 border-b border-border/60 py-2 last:border-0">
+                   <span class="font-mono text-[10px] uppercase tracking-widest text-muted-foreground">${escapeHtml(label)}</span>
+                   <span class="text-right text-sm text-white">${escapeHtml(value ?? "-")}</span>
+                 </div>`;
+      }
+
+      function sectionLabel(text) {
+        return `<p class="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">${escapeHtml(text)}</p>`;
+      }
+
+      function renderFormattedIntentResult(payload) {
+        const parts = [];
+        const label = payload.verdict === "APPROVE" ? "Approved" : `Declined: ${payload.reason ?? payload.status ?? "unknown"}`;
+        const badgeClass = payload.verdict === "APPROVE" ? "text-approve" : "text-decline";
+        parts.push(`<p class="text-sm font-semibold ${badgeClass}">${escapeHtml(label)}</p>`);
+
+        if (payload.card) {
+          parts.push(kv("Card status", payload.card.status));
+          if (payload.card.wouldSend) {
+            parts.push(kv("Would send (dry run)", JSON.stringify(payload.card.wouldSend)));
+          }
+          if (payload.card.patterns?.length) {
+            parts.push(kv("Guard patterns matched", String(payload.card.patterns.length)));
+          }
+        }
+        if (payload.status) parts.push(kv("Status", payload.status));
+        if (payload.message) parts.push(kv("Message", payload.message));
+        if (payload.cardReference) parts.push(kv("Card reference", payload.cardReference));
+        if (payload.receipt?.settlementTx) {
+          parts.push(kv("Settlement tx", payload.receipt.settlementTx));
+          parts.push(kv("Chain", `Fuji · ${payload.receipt.chainId}`));
+        }
+        return `<div class="space-y-1">${parts.join("")}</div>`;
+      }
+
+      function renderFormResult(payload) {
+        lastFormResult = payload;
+        els.formTabs.classList.remove("hidden");
+        els.formTabs.classList.add("flex");
+
+        if (formTab === "raw") {
+          els.formTabFormatted.className = inactiveTabClass;
+          els.formTabRaw.className = activeTabClass;
+          els.formResult.innerHTML = `<pre class="whitespace-pre-wrap break-words text-xs text-muted-foreground">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
+        } else {
+          els.formTabFormatted.className = activeTabClass;
+          els.formTabRaw.className = inactiveTabClass;
+          els.formResult.innerHTML = renderFormattedIntentResult(payload);
+        }
+      }
+
+      els.formTabFormatted.addEventListener("click", () => {
+        formTab = "formatted";
+        if (lastFormResult) renderFormResult(lastFormResult);
+      });
+      els.formTabRaw.addEventListener("click", () => {
+        formTab = "raw";
+        if (lastFormResult) renderFormResult(lastFormResult);
+      });
+
+      function renderDetailFormatted(d) {
+        const parts = [];
+        const isSuspicious = d.reasonCode === "SUSPICIOUS_MCP_RESPONSE";
+        const verdictBadgeClasses =
+          d.verdict === "APPROVE"
+            ? "border-approve/40 bg-approve/15 text-approve"
+            : isSuspicious
+              ? "border-accent/50 bg-accent/15 text-accent"
+              : "border-decline/40 bg-decline/15 text-decline";
+
+        parts.push(`<div class="flex flex-wrap items-center justify-between gap-3 rounded-md border border-border bg-zinc-900 px-4 py-3">
+          <div class="flex items-center gap-2">
+            <span class="inline-flex rounded-md border px-2.5 py-1 text-xs font-bold uppercase tracking-wide ${verdictBadgeClasses}">${escapeHtml(d.verdict)}</span>
+            <code class="text-xs text-muted-foreground">${escapeHtml(d.reasonCode ?? "CARD_ISSUED")}</code>
+          </div>
+          <code class="text-xs text-muted-foreground">${escapeHtml(d.merchant)} · ${formatXsgd(d.amount)}</code>
+        </div>`);
+
+        const excerpts = d.guardExcerpts ?? [];
+        const patterns = d.guardPatterns ?? [];
+        if (excerpts.length || patterns.length) {
+          const items = (excerpts.length ? excerpts : patterns)
+            .map(
+              (text) =>
+                `<li class="redacted-text text-xs leading-relaxed text-muted-foreground">${escapeHtml(text)}</li>`
+            )
+            .join("");
+          parts.push(`<div class="evidence-strip rounded-md bg-accent/5 py-3 pl-4 pr-3">
+            <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-accent">
+                Neutralized · ${patterns.length} pattern${patterns.length === 1 ? "" : "s"} matched
+              </p>
+              <span class="rounded bg-accent px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-black">Blocked before signing</span>
+            </div>
+            <p class="mb-2 text-[11px] text-muted-foreground">
+              Mandate read this text, recognized it as an attempt to direct the agent, and never acted on it.
+            </p>
+            <ul class="space-y-1.5">${items}</ul>
+          </div>`);
+        }
+
+        parts.push(`<div class="rounded-md border border-border bg-zinc-900 p-3">
+          ${sectionLabel("Overview")}
+          ${kv("Time", formatTime(d.timestamp))}
+          ${kv("Item", d.item)}
+          ${kv("Balance at decision", formatXsgd(d.balanceAtDecision))}
+          ${kv("Card reference", d.cardReference)}
+        </div>`);
+
+        if (d.reviewStatus) {
+          parts.push(`<div class="rounded-md border border-border bg-zinc-900 p-3">
+            ${sectionLabel("Review")}
+            ${kv("Status", d.reviewStatus)}
+            ${kv("Payment fields", d.paymentValidationStatus)}
+            ${kv("Reviewed at", d.reviewedAt ? formatTime(d.reviewedAt) : "-")}
+            ${kv("Note", d.reviewNote)}
+          </div>`);
+        }
+
+        if (d.extractedPaymentFields) {
+          const f = d.extractedPaymentFields;
+          parts.push(`<div class="rounded-md border border-border bg-zinc-900 p-3">
+            ${sectionLabel("Extracted payment fields")}
+            ${kv("Amount SGD", f.amountSgd)}
+            ${kv("Wallet address", f.walletAddress)}
+            ${kv("Chain ID", f.chainId)}
+            ${kv("Token", f.token)}
+            ${kv("Card API URL", f.cardApiUrl)}
+          </div>`);
+        }
+
+        if (d.issueReceipt?.settlementTx) {
+          const r = d.issueReceipt;
+          parts.push(`<div class="rounded-md border border-dashed border-border bg-zinc-900 p-3">
+            ${sectionLabel("x402 settlement receipt")}
+            ${kv("Network", r.network)}
+            ${kv("Chain ID", r.chainId)}
+            ${kv("Asset", r.asset)}
+            ${kv("Pay to", r.payTo)}
+            ${kv("Amount (units)", r.amount)}
+            <div class="mt-3 border-t border-border/60 pt-3">
+              <a href="https://testnet.snowtrace.io/tx/${escapeHtml(r.settlementTx)}" target="_blank" rel="noopener" class="text-xs font-medium text-accent hover:underline">
+                View settlement on Snowtrace ↗
+              </a>
+            </div>
+          </div>`);
+        }
+
+        if (d.reviewStatus === "PENDING_REVIEW") {
+          parts.push(`<div id="reviewActionRow" class="space-y-2">
+            <div class="flex gap-2">
+              <button data-modal-review="approve" class="h-9 flex-1 rounded-md bg-white text-xs font-semibold uppercase tracking-wide text-black hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-60">Approve review</button>
+              <button data-modal-review="decline" class="h-9 flex-1 rounded-md border border-border bg-zinc-900 text-xs font-semibold uppercase tracking-wide text-white hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-60">Decline</button>
+            </div>
+            <p id="reviewActionStatus" class="hidden text-xs text-accent"></p>
+          </div>`);
+        }
+
+        return parts.join("");
+      }
+
+      function renderDetailModal() {
+        const d = findDecision(activeDecisionId);
+        if (!d) return;
+
+        els.detailSubtitle.textContent = `${d.merchant} · ${formatXsgd(d.amount)} · ${formatTime(d.timestamp)}`;
+
+        if (detailTab === "raw") {
+          els.detailTabFormatted.className = inactiveTabClass;
+          els.detailTabRaw.className = activeTabClass;
+          els.detailFormatted.classList.add("hidden");
+          els.detailRaw.classList.remove("hidden");
+          els.detailRaw.textContent = JSON.stringify(d, null, 2);
+        } else {
+          els.detailTabFormatted.className = activeTabClass;
+          els.detailTabRaw.className = inactiveTabClass;
+          els.detailFormatted.classList.remove("hidden");
+          els.detailRaw.classList.add("hidden");
+          els.detailFormatted.innerHTML = renderDetailFormatted(d);
+        }
+      }
+
+      function openDetailModal(id) {
+        activeDecisionId = id;
+        detailTab = "formatted";
+        els.detailModal.classList.remove("hidden");
+        els.detailModal.classList.add("flex");
+        renderDetailModal();
+      }
+
+      function closeDetailModal() {
+        activeDecisionId = null;
+        els.detailModal.classList.add("hidden");
+        els.detailModal.classList.remove("flex");
+      }
+
+      els.guardBannerClose.addEventListener("click", () => {
+        guardBannerDismissedAtCount = Number(els.blockedCount.textContent) || 0;
+        els.guardBanner.classList.add("hidden");
+      });
+
+      function showAllowlistError(message) {
+        els.allowlistError.textContent = message;
+        els.allowlistError.classList.toggle("hidden", !message);
+      }
+
+      function renderAllowlistModal() {
+        const merchants = currentMandate?.merchantAllowlist ?? [];
+
+        if (merchants.length === 0) {
+          els.allowlistItems.innerHTML = `<div class="rounded-md border border-decline/30 bg-decline/5 p-3">
+            <p class="text-xs text-decline">Registry is empty. Every purchase will decline until you add a merchant.</p>
+          </div>`;
+          return;
+        }
+
+        els.allowlistItems.innerHTML = merchants
+          .map((name) => {
+            if (editingMerchant === name) {
+              return `<div class="flex gap-2 rounded-md border border-accent/50 bg-zinc-900 p-2" data-merchant-row="${escapeHtml(name)}">
+                <input
+                  type="text"
+                  value="${escapeHtml(name)}"
+                  data-edit-input
+                  class="h-9 flex-1 rounded-md border border-accent bg-zinc-950 px-3 text-sm text-white outline-none"
+                />
+                <button data-merchant-action="save" data-merchant="${escapeHtml(name)}" class="h-9 rounded-md bg-white px-3 text-[11px] font-semibold uppercase tracking-wide text-black hover:bg-zinc-200">Save</button>
+                <button data-merchant-action="cancel" class="h-9 rounded-md border border-border bg-zinc-950 px-3 text-[11px] font-semibold uppercase tracking-wide text-white hover:bg-zinc-800">Cancel</button>
+              </div>`;
+            }
+            return `<div class="flex items-center justify-between gap-2 rounded-md border border-border bg-zinc-900 px-3 py-2.5" data-merchant-row="${escapeHtml(name)}">
+              <div class="flex min-w-0 items-center gap-2">
+                <span class="h-1.5 w-1.5 shrink-0 rounded-full bg-approve"></span>
+                <code class="truncate text-sm text-white">${escapeHtml(name)}</code>
+              </div>
+              <div class="flex shrink-0 gap-2">
+                <button data-merchant-action="edit" data-merchant="${escapeHtml(name)}" class="h-7 rounded-md border border-border bg-zinc-950 px-2.5 text-[11px] font-medium uppercase tracking-wide text-white hover:bg-zinc-800">Edit</button>
+                <button data-merchant-action="remove" data-merchant="${escapeHtml(name)}" class="h-7 rounded-md border border-decline/40 bg-decline/10 px-2.5 text-[11px] font-medium uppercase tracking-wide text-decline hover:bg-decline/20">Remove</button>
+              </div>
+            </div>`;
+          })
+          .join("");
+      }
+
+      function openAllowlistModal() {
+        editingMerchant = null;
+        showAllowlistError("");
+        els.allowlistModal.classList.remove("hidden");
+        els.allowlistModal.classList.add("flex");
+        renderAllowlistModal();
+      }
+
+      function closeAllowlistModal() {
+        editingMerchant = null;
+        els.allowlistModal.classList.add("hidden");
+        els.allowlistModal.classList.remove("flex");
+      }
+
+      els.allowlistCard.addEventListener("click", openAllowlistModal);
+      els.allowlistClose.addEventListener("click", closeAllowlistModal);
+      els.allowlistModal.addEventListener("click", (event) => {
+        if (event.target === els.allowlistModal) closeAllowlistModal();
+      });
+
+      els.allowlistAddForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const merchant = els.allowlistAddInput.value.trim();
+        if (!merchant) return;
+        showAllowlistError("");
+        try {
+          const res = await fetch("/mandate/allowlist", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ merchant }),
+          });
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.error ?? "Could not add merchant");
+          currentMandate = payload;
+          els.allowlistAddInput.value = "";
+          renderAllowlistModal();
+          await refresh();
+        } catch (error) {
+          showAllowlistError(error instanceof Error ? error.message : String(error));
+        }
+      });
+
+      els.allowlistItems.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-merchant-action]");
+        if (!button) return;
+        const action = button.dataset.merchantAction;
+        const merchant = button.dataset.merchant;
+
+        if (action === "edit") {
+          editingMerchant = merchant;
+          showAllowlistError("");
+          renderAllowlistModal();
+          return;
+        }
+
+        if (action === "cancel") {
+          editingMerchant = null;
+          renderAllowlistModal();
+          return;
+        }
+
+        if (action === "remove") {
+          showAllowlistError("");
+          try {
+            const res = await fetch(`/mandate/allowlist/${encodeURIComponent(merchant)}`, { method: "DELETE" });
+            const payload = await res.json();
+            if (!res.ok) throw new Error(payload.error ?? "Could not remove merchant");
+            currentMandate = payload;
+            renderAllowlistModal();
+            await refresh();
+          } catch (error) {
+            showAllowlistError(error instanceof Error ? error.message : String(error));
+          }
+          return;
+        }
+
+        if (action === "save") {
+          const row = button.closest("[data-merchant-row]");
+          const input = row?.querySelector("[data-edit-input]");
+          const newName = input?.value.trim();
+          if (!newName) {
+            showAllowlistError("Merchant name cannot be empty");
+            return;
+          }
+          showAllowlistError("");
+          try {
+            const res = await fetch(`/mandate/allowlist/${encodeURIComponent(merchant)}`, {
+              method: "PUT",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ merchant: newName }),
+            });
+            const payload = await res.json();
+            if (!res.ok) throw new Error(payload.error ?? "Could not rename merchant");
+            currentMandate = payload;
+            editingMerchant = null;
+            renderAllowlistModal();
+            await refresh();
+          } catch (error) {
+            showAllowlistError(error instanceof Error ? error.message : String(error));
+          }
+        }
+      });
+
+      els.detailClose.addEventListener("click", closeDetailModal);
+      els.detailModal.addEventListener("click", (event) => {
+        if (event.target === els.detailModal) closeDetailModal();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && activeDecisionId) closeDetailModal();
+      });
+      els.detailTabFormatted.addEventListener("click", () => {
+        detailTab = "formatted";
+        renderDetailModal();
+      });
+      els.detailTabRaw.addEventListener("click", () => {
+        detailTab = "raw";
+        renderDetailModal();
+      });
+
+      els.rows.addEventListener("click", (event) => {
+        const viewButton = event.target.closest("[data-view-id]");
+        if (viewButton) openDetailModal(viewButton.dataset.viewId);
+      });
+
+      function spinnerHtml(label, ringClass) {
+        return `<span class="inline-flex items-center justify-center gap-2">
+          <span class="h-3.5 w-3.5 animate-spin rounded-full border-2 ${ringClass} border-t-transparent"></span>
+          ${escapeHtml(label)}
+        </span>`;
+      }
+
+      async function submitReview(id, action) {
+        const res = await fetch(`/review/${id}/${action}`, { method: "POST" });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error ?? "Review update failed");
+        renderFormResult(payload);
+        await refresh();
+        if (activeDecisionId === id) renderDetailModal();
+      }
+
+      els.detailFormatted.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-modal-review]");
+        if (!button || !activeDecisionId) return;
+
+        const action = button.dataset.modalReview;
+        const isApprove = action === "approve";
+        const allButtons = els.detailFormatted.querySelectorAll("[data-modal-review]");
+        const status = els.detailFormatted.querySelector("#reviewActionStatus");
+
+        allButtons.forEach((b) => (b.disabled = true));
+        button.innerHTML = spinnerHtml(
+          isApprove ? "Approving..." : "Declining...",
+          isApprove ? "border-black/30" : "border-white/30"
+        );
+        if (status) {
+          status.classList.remove("hidden");
+          status.textContent = isApprove
+            ? "Signing and submitting to StraitsX sandbox, this can take a few seconds..."
+            : "Recording decline...";
+        }
+
+        try {
+          await submitReview(activeDecisionId, action);
+        } catch (error) {
+          els.formResult.textContent = error instanceof Error ? error.message : String(error);
+          renderDetailModal();
+        }
+      });
 
       async function refresh() {
         const [statusRes, decisionsRes] = await Promise.all([fetch("/status"), fetch("/decisions")]);
@@ -481,13 +1087,21 @@
             amount.value = "20";
             item.value = "over limit cart";
           }
+          if (preset === "cap") {
+            merchant.value = "mikes-store";
+            amount.value = "15";
+            item.value = "cap test";
+          }
         });
       });
+
+      const submitIntentLabel = els.submitIntent.textContent;
 
       els.form.addEventListener("submit", async (event) => {
         event.preventDefault();
         els.submitIntent.disabled = true;
-        els.formResult.textContent = "Evaluating...";
+        els.submitIntent.innerHTML = spinnerHtml("Evaluating...", "border-black/30");
+        els.formResult.textContent = "Evaluating intent against the mandate...";
 
         const body = {
           merchant: document.querySelector("#merchant").value,
@@ -502,40 +1116,18 @@
             body: JSON.stringify(body),
           });
           const payload = await res.json();
-          const label = payload.verdict === "APPROVE" ? "Approved" : `Declined: ${payload.reason ?? "unknown"}`;
-          els.formResult.innerHTML = `<span class="font-semibold text-white">${escapeHtml(label)}</span><pre class="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
+          renderFormResult(payload);
           await refresh();
         } catch (error) {
           els.formResult.textContent = error instanceof Error ? error.message : String(error);
         } finally {
           els.submitIntent.disabled = false;
-        }
-      });
-
-      els.rows.addEventListener("click", async (event) => {
-        const button = event.target.closest("[data-review-action]");
-        if (!button) return;
-
-        const action = button.dataset.reviewAction;
-        const id = button.dataset.reviewId;
-        button.disabled = true;
-        els.formResult.textContent =
-          action === "approve" ? "Approving review without signing..." : "Declining review...";
-
-        try {
-          const res = await fetch(`/review/${id}/${action}`, { method: "POST" });
-          const payload = await res.json();
-          if (!res.ok) throw new Error(payload.error ?? "Review update failed");
-          els.formResult.innerHTML = `<span class="font-semibold text-white">${escapeHtml(payload.status)}</span><pre class="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
-          await refresh();
-        } catch (error) {
-          els.formResult.textContent = error instanceof Error ? error.message : String(error);
-          button.disabled = false;
+          els.submitIntent.textContent = submitIntentLabel;
         }
       });
 
       refresh().catch((error) => {
-        els.rows.innerHTML = `<tr><td colspan="10" class="px-3 py-6 text-center text-decline">${escapeHtml(error.message)}</td></tr>`;
+        els.rows.innerHTML = `<tr><td colspan="8" class="px-3 py-6 text-center text-decline">${escapeHtml(error.message)}</td></tr>`;
       });
       setInterval(() => refresh().catch(() => {}), 5000);
     </script>

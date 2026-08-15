@@ -31,7 +31,7 @@ export function amountToXsgdUnits(amountSgd: number): string {
   return String(Math.round(amountSgd * 10 ** XSGD_DECIMALS));
 }
 
-function assertRequirementMatches(requirement: X402Requirement, amountSgd: number): void {
+export function assertRequirementMatches(requirement: X402Requirement, amountSgd: number): void {
   const errors: string[] = [];
 
   if (requirement.chainId !== FUJI_CHAIN_ID) {
@@ -59,11 +59,18 @@ export async function requestX402Challenge(
   url: string,
   body: IssueCardBody
 ): Promise<{ challenge: X402Challenge; requirement: X402Requirement }> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    throw new Error(
+      `x402 challenge request failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 
   if (response.status !== 402) {
     throw new Error(`Expected HTTP 402 payment challenge, got ${response.status}`);
@@ -159,14 +166,21 @@ export async function submitSignedCardRequest(
   body: IssueCardBody,
   paymentSignatureHeader: string
 ): Promise<CardIssueResult> {
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "PAYMENT-SIGNATURE": paymentSignatureHeader,
-    },
-    body: JSON.stringify(body),
-  });
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "PAYMENT-SIGNATURE": paymentSignatureHeader,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (error) {
+    throw new Error(
+      `x402 card submission failed: ${error instanceof Error ? error.message : String(error)}`
+    );
+  }
 
   if (!response.ok) {
     const text = await response.text();
