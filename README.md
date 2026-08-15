@@ -179,17 +179,60 @@ If someone asks why a transaction happened, the answer is in the log.
 
 ---
 
-## Running it
+## Running it (step by step for panelists)
 
+You don't need a funded wallet to see this run, the default mode (`DRY_RUN=true`) exercises the full policy engine, guard, and dashboard without touching the blockchain or spending anything.
+
+**1. Prerequisites:** Node.js 18 or newer, npm.
+
+**2. Clone and install:**
 ```bash
+git clone https://github.com/michaelfrancesco/agentic-payments-straitsx.git
+cd agentic-payments-straitsx
 npm install
-npm run dev        # starts the Express server on PORT (default 4020)
-npm test           # 53 tests: policy engine, guard, payment extractor, x402, mandate store, decision log, input validation
 ```
 
-Dashboard is served at `http://localhost:4020/`.
+**3. Set up your environment file:**
+```bash
+cp .env.example .env
+```
+Every field can stay as-is except `AGENT_PRIVATE_KEY`, which needs *some* validly formatted key (the server checks the format at startup, but it doesn't need to be funded or real for dry-run testing). Generate a throwaway one:
+```bash
+echo "0x$(openssl rand -hex 32)"
+```
+Paste that into `AGENT_PRIVATE_KEY=` in `.env`.
 
-`.env` (gitignored) needs `PORT`, `NETWORK_PROFILE`, `FUJI_RPC`, `MCP_SSE_ENDPOINT`, `AGENT_ADDRESS`, `AGENT_PRIVATE_KEY`, `DRY_RUN`. See `.env.example` for the shape (secrets blanked).
+**4. Start the server:**
+```bash
+npm run dev
+```
+You should see `Mandate server listening on port 4020`.
+
+**5. Open the dashboard:** `http://localhost:4020/` in a browser. You'll see live XSGD balance (reads `0` for an unfunded test wallet, that's expected), mandate headroom, and the decision log.
+
+**6. Try the demo.** Either use the preset buttons on the dashboard's Purchase Intent panel (Approve, Merchant, Limit, Cap), or curl it directly:
+```bash
+# Approve
+curl -X POST http://localhost:4020/intent -H "Content-Type: application/json" \
+  -d '{"merchant":"mikes-store","amount":5,"item":"widget"}'
+
+# Decline, merchant not on the allowlist
+curl -X POST http://localhost:4020/intent -H "Content-Type: application/json" \
+  -d '{"merchant":"sketchy-shop","amount":5,"item":"shady thing"}'
+
+# Decline, over the per-transaction limit
+curl -X POST http://localhost:4020/intent -H "Content-Type: application/json" \
+  -d '{"merchant":"mikes-store","amount":20,"item":"big widget"}'
+```
+Each call updates the decision log on the dashboard in real time.
+
+**7. Run the test suite:**
+```bash
+npm test        # 53 tests: policy engine, guard, payment extractor, x402, mandate store, decision log, input validation
+npm run typecheck
+```
+
+**Note on the live parts:** minting a real one-time card and catching the live prompt injection (the "What actually happened during this build" section above) both require a wallet actually funded with testnet XSGD and access StraitsX granted to my specific address. Those are demonstrated in the pitch video and the decision log's history, not something a fresh clone can reproduce without that funding, everything else (the policy engine, the guard, the dashboard, the full decline logic) runs exactly as shown above with zero setup beyond a throwaway key.
 
 ### Safety
 

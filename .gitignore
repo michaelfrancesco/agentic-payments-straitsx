@@ -10,3 +10,4 @@ claude-code-context-docs/
 docs/*
 !docs/architecture-diagram.png
 submission/
+CLAUDE.md
