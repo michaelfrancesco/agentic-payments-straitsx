@@ -15,6 +15,7 @@ app.use(express.static("public"));
 const account = privateKeyToAccount(process.env.AGENT_PRIVATE_KEY as `0x${string}`);
 
 let spentSoFar = 0;
+let dryRunMode = process.env.DRY_RUN !== "false";
 
 function cardReferenceFor(
   card: Exclude<Awaited<ReturnType<typeof issueOneTimeCard>>, { status: "blocked_by_guard" }>
@@ -33,8 +34,21 @@ app.get("/status", async (req, res) => {
     balance,
     spentSoFar,
     mandate,
-    dryRun: process.env.DRY_RUN !== "false",
+    dryRun: dryRunMode,
   });
+});
+
+app.post("/dry-run", (req, res) => {
+  const { dryRun } = req.body;
+
+  if (typeof dryRun !== "boolean") {
+    res.status(400).json({ error: "dryRun must be true or false" });
+    return;
+  }
+
+  dryRunMode = dryRun;
+  process.env.DRY_RUN = String(dryRun);
+  res.json({ dryRun: dryRunMode });
 });
 
 app.get("/decisions", (req, res) => {
@@ -47,8 +61,7 @@ app.post("/intent", async (req, res) => {
   const result = evaluatePolicy(mandate, { merchant, amount, item }, { spentSoFar, balance });
 
   if (result.verdict === "APPROVE") {
-    const dryRun = process.env.DRY_RUN !== "false";
-    const card = await issueOneTimeCard({ merchant, amount }, account, dryRun);
+    const card = await issueOneTimeCard({ merchant, amount }, account, dryRunMode);
 
     if (card.status === "blocked_by_guard") {
       appendDecision({

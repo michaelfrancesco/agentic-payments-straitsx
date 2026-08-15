@@ -87,3 +87,11 @@ Format for each entry:
 ## 2026-08-15 17:01 SGT — Step 5.5 guard and Step 6 dashboard verified
 **Type:** milestone
 **Details:** Prompt-injection guard is wired into card issuance. With `DRY_RUN=false` for one approved intent, the real StraitsX sandbox MCP response was fetched, flagged, blocked before signing, and logged as `SUSPICIOUS_MCP_RESPONSE`. `.env` was flipped back to `DRY_RUN=true` immediately after the one guard test. `npm test` passes with 13 tests: 6 policy tests and 7 guard tests. `npx tsc --noEmit` passes. Dashboard is served from `public/index.html` at `http://localhost:4020/`, shows live balance, mandate headroom, decision log, dry-run mode badge, injection blocked counter, and a top guard banner when suspicious decisions exist.
+
+## 2026-08-15 17:15 SGT — Tailwind dashboard and dry-run toggle added
+**Type:** code
+**Details:** Reworked `public/index.html` into a Tailwind CDN dashboard with shadcn-style cards, badges, inputs, table, and switch UI. Added `POST /dry-run` to `src/server.ts` so the dashboard can switch runtime `DRY_RUN` between true and false without exposing secrets. Verified `npm test` passes with 13 tests, `npx tsc --noEmit` passes, dashboard serves at `http://localhost:4020/`, toggle accepts false and true, and final runtime mode is back to `DRY_RUN=true`.
+
+## 2026-08-15 17:xx SGT — Learning support preference recorded
+**Type:** note
+**Details:** User asked for each future update or step change to include short explanations, definitions, and simple analogies because they are new to stablecoins, StraitsX, web3, and the payments stack. Continue to explain what changed, why it matters, and how it maps to a real-world finance or operations analogy.
