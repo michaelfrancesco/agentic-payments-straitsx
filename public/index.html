@@ -1,184 +1,511 @@
 <!doctype html>
 <html lang="en">
-<head>
-<meta charset="utf-8" />
-<title>Mandate — Agent Spend Control Plane</title>
-<style>
-  :root { color-scheme: dark; }
-  * { box-sizing: border-box; }
-  body {
-    background: #0b0e14;
-    color: #e8ecf1;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    margin: 0;
-    padding: 32px;
-    font-size: 18px;
-  }
-  h1 { font-size: 28px; margin: 0 0 4px; }
-  .subtitle { color: #8a94a6; margin: 0 0 28px; font-size: 16px; }
-  .panel {
-    background: #12161f;
-    border: 1px solid #232a38;
-    border-radius: 12px;
-    padding: 24px;
-    margin-bottom: 24px;
-  }
-  .stat-row { display: flex; gap: 40px; flex-wrap: wrap; margin-bottom: 16px; }
-  .stat { }
-  .stat .label { color: #8a94a6; font-size: 14px; text-transform: uppercase; letter-spacing: 0.05em; }
-  .stat .value { font-size: 32px; font-weight: 700; }
-  .bar-track {
-    width: 100%;
-    height: 20px;
-    background: #232a38;
-    border-radius: 10px;
-    overflow: hidden;
-  }
-  .bar-fill {
-    height: 100%;
-    background: linear-gradient(90deg, #4ade80, #22c55e);
-    transition: width 0.3s ease;
-  }
-  .mandate-details { color: #8a94a6; font-size: 15px; margin-top: 12px; }
-  form { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-end; margin-top: 8px; }
-  .field { display: flex; flex-direction: column; gap: 4px; }
-  .field label { font-size: 13px; color: #8a94a6; }
-  input, select {
-    background: #0b0e14;
-    border: 1px solid #333c4d;
-    color: #e8ecf1;
-    padding: 10px 12px;
-    border-radius: 8px;
-    font-size: 16px;
-  }
-  button {
-    background: #3b82f6;
-    color: white;
-    border: none;
-    padding: 11px 20px;
-    border-radius: 8px;
-    font-size: 16px;
-    font-weight: 600;
-    cursor: pointer;
-  }
-  button:hover { background: #2563eb; }
-  table { width: 100%; border-collapse: collapse; margin-top: 8px; }
-  th, td { text-align: left; padding: 10px 12px; font-size: 15px; border-bottom: 1px solid #232a38; }
-  th { color: #8a94a6; font-weight: 600; text-transform: uppercase; font-size: 12px; letter-spacing: 0.05em; }
-  .verdict-approve { color: #4ade80; font-weight: 700; }
-  .verdict-decline { color: #f87171; font-weight: 700; }
-  .reason { color: #f87171; font-family: monospace; font-size: 13px; }
-  .empty { color: #8a94a6; padding: 16px 0; }
-</style>
-</head>
-<body>
-  <h1>Mandate</h1>
-  <p class="subtitle">Agent spend control plane — the decline is the demo.</p>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mandate</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              border: "hsl(240 3.7% 15.9%)",
+              input: "hsl(240 3.7% 15.9%)",
+              background: "hsl(240 10% 3.9%)",
+              foreground: "hsl(0 0% 98%)",
+              muted: "hsl(240 3.7% 15.9%)",
+              "muted-foreground": "hsl(240 5% 64.9%)",
+              card: "hsl(240 10% 3.9%)",
+              "card-foreground": "hsl(0 0% 98%)",
+              accent: "hsl(47 96% 53%)",
+              approve: "hsl(142 71% 45%)",
+              decline: "hsl(0 84% 60%)",
+            },
+            boxShadow: {
+              grid: "inset 0 1px 0 rgba(255,255,255,0.04)",
+            },
+          },
+        },
+      };
+    </script>
+    <style>
+      body {
+        letter-spacing: 0;
+      }
 
-  <div class="panel">
-    <div class="stat-row">
-      <div class="stat">
-        <div class="label">XSGD Balance</div>
-        <div class="value" id="balance">-</div>
-      </div>
-      <div class="stat">
-        <div class="label">Spent / Cap</div>
-        <div class="value" id="spent">-</div>
-      </div>
-      <div class="stat">
-        <div class="label">Headroom</div>
-        <div class="value" id="headroom">-</div>
-      </div>
-    </div>
-    <div class="bar-track"><div class="bar-fill" id="bar" style="width:0%"></div></div>
-    <div class="mandate-details" id="mandate-details">Loading mandate…</div>
-  </div>
+      .bg-ledger {
+        background:
+          linear-gradient(rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255, 255, 255, 0.035) 1px, transparent 1px),
+          hsl(240 10% 3.9%);
+        background-size: 44px 44px;
+      }
+    </style>
+  </head>
+  <body class="bg-ledger min-h-screen text-foreground antialiased">
+    <main class="mx-auto flex min-h-screen w-full max-w-7xl flex-col gap-4 px-5 py-5 lg:px-7">
+      <header class="rounded-lg border border-border bg-black/80 p-5 shadow-grid">
+        <div class="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div class="mb-3 flex flex-wrap items-center gap-2">
+              <span class="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+                Agentix Playground
+              </span>
+              <span id="modePill" class="rounded-md border px-2.5 py-1 text-xs font-semibold">
+                Loading mode
+              </span>
+            </div>
+            <h1 class="text-4xl font-semibold tracking-normal text-white lg:text-5xl">Mandate</h1>
+            <p class="mt-2 max-w-2xl text-sm leading-6 text-muted-foreground">
+              Agent spend control plane. A purchase is checked against the mandate before any card can be issued.
+            </p>
+          </div>
 
-  <div class="panel">
-    <form id="intent-form">
-      <div class="field">
-        <label for="merchant">Merchant</label>
-        <input id="merchant" name="merchant" value="acme-store" />
-      </div>
-      <div class="field">
-        <label for="amount">Amount (XSGD)</label>
-        <input id="amount" name="amount" type="number" value="10" />
-      </div>
-      <div class="field">
-        <label for="item">Item</label>
-        <input id="item" name="item" value="widget" />
-      </div>
-      <button type="submit">Submit intent</button>
-    </form>
-  </div>
+          <div class="rounded-lg border border-border bg-zinc-950 p-4">
+            <div class="flex items-center justify-between gap-5">
+              <div>
+                <p class="text-xs font-medium uppercase text-muted-foreground">Payment mode</p>
+                <p id="dryRunLabel" class="mt-1 text-lg font-semibold text-white">DRY_RUN=true</p>
+              </div>
+              <button
+                id="dryRunSwitch"
+                type="button"
+                role="switch"
+                aria-checked="true"
+                class="relative h-7 w-12 rounded-full border border-border bg-zinc-800 transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-black"
+              >
+                <span
+                  id="dryRunKnob"
+                  class="absolute left-1 top-1 h-5 w-5 rounded-full bg-white transition"
+                ></span>
+              </button>
+            </div>
+            <p id="modeCopy" class="mt-3 max-w-xs text-xs leading-5 text-muted-foreground">
+              Safe demo mode. Approved intents return a dry-run card reference.
+            </p>
+          </div>
+        </div>
+      </header>
 
-  <div class="panel">
-    <h2 style="margin-top:0;">Decision Log</h2>
-    <table id="log-table">
-      <thead>
-        <tr><th>Time</th><th>Merchant</th><th>Amount</th><th>Item</th><th>Verdict</th><th>Reason / Card</th></tr>
-      </thead>
-      <tbody id="log-body"></tbody>
-    </table>
-    <div class="empty" id="log-empty" style="display:none;">No decisions yet.</div>
-  </div>
+      <section
+        id="guardBanner"
+        class="hidden rounded-lg border border-accent/60 bg-accent/10 p-4 text-amber-100"
+      >
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm font-semibold text-accent">Prompt injection detected</p>
+            <p id="guardBannerText" class="mt-1 text-sm text-amber-100/80">
+              Wallet keys never touched.
+            </p>
+          </div>
+          <span class="rounded-md bg-accent px-2.5 py-1 text-xs font-bold text-black">
+            BLOCKED BEFORE SIGNING
+          </span>
+        </div>
+      </section>
 
-<script>
-async function loadStatus() {
-  const res = await fetch("/status");
-  const s = await res.json();
-  document.getElementById("balance").textContent = s.balance != null ? s.balance + " XSGD" : "n/a";
-  document.getElementById("spent").textContent = s.spentSoFar + " / " + s.mandate.capTotal + " XSGD";
-  document.getElementById("headroom").textContent = s.headroom + " XSGD";
-  const pct = Math.min(100, (s.spentSoFar / s.mandate.capTotal) * 100);
-  document.getElementById("bar").style.width = pct + "%";
-  document.getElementById("mandate-details").textContent =
-    "Per-transaction limit: " + s.mandate.perTransactionLimit + " XSGD · " +
-    "Allowlist: " + s.mandate.merchantAllowlist.join(", ") + " · " +
-    "Expires: " + new Date(s.mandate.expiresAt).toLocaleString();
-}
+      <section class="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
+        <div class="rounded-lg border border-border bg-black/85 p-5 shadow-grid">
+          <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div>
+              <h2 class="text-lg font-semibold text-white">Control Plane</h2>
+              <p class="mt-1 text-sm text-muted-foreground">Live balance, spend cap, and mandate headroom.</p>
+            </div>
+            <span id="wallet" class="max-w-full truncate rounded-md border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
+              Wallet loading
+            </span>
+          </div>
 
-async function loadDecisions() {
-  const res = await fetch("/decisions");
-  const decisions = await res.json();
-  const body = document.getElementById("log-body");
-  const empty = document.getElementById("log-empty");
-  body.innerHTML = "";
-  empty.style.display = decisions.length === 0 ? "block" : "none";
-  for (const d of decisions) {
-    const tr = document.createElement("tr");
-    const verdictClass = d.verdict === "APPROVE" ? "verdict-approve" : "verdict-decline";
-    const detail = d.verdict === "APPROVE" ? (d.cardReference || "-") : d.reasonCode;
-    tr.innerHTML =
-      "<td>" + new Date(d.timestamp).toLocaleTimeString() + "</td>" +
-      "<td>" + d.merchant + "</td>" +
-      "<td>" + d.amount + "</td>" +
-      "<td>" + d.item + "</td>" +
-      "<td class='" + verdictClass + "'>" + d.verdict + "</td>" +
-      "<td class='reason'>" + detail + "</td>";
-    body.appendChild(tr);
-  }
-}
+          <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div class="rounded-lg border border-border bg-zinc-950 p-4">
+              <p class="text-xs font-medium uppercase text-muted-foreground">XSGD balance</p>
+              <p id="balance" class="mt-2 text-2xl font-semibold text-white">--</p>
+            </div>
+            <div class="rounded-lg border border-border bg-zinc-950 p-4">
+              <p class="text-xs font-medium uppercase text-muted-foreground">Spent</p>
+              <p id="spent" class="mt-2 text-2xl font-semibold text-white">--</p>
+            </div>
+            <div class="rounded-lg border border-border bg-zinc-950 p-4">
+              <p class="text-xs font-medium uppercase text-muted-foreground">Remaining</p>
+              <p id="remaining" class="mt-2 text-2xl font-semibold text-white">--</p>
+            </div>
+            <div class="rounded-lg border border-border bg-zinc-950 p-4">
+              <p class="text-xs font-medium uppercase text-muted-foreground">Guard blocks</p>
+              <p id="blockedCount" class="mt-2 text-2xl font-semibold text-accent">0</p>
+            </div>
+          </div>
 
-async function refresh() {
-  await Promise.all([loadStatus(), loadDecisions()]);
-}
+          <div class="mt-5">
+            <div class="mb-2 flex items-center justify-between text-xs text-muted-foreground">
+              <span>Mandate spend cap</span>
+              <span id="capLabel">--</span>
+            </div>
+            <div class="h-3 overflow-hidden rounded-full border border-border bg-zinc-950">
+              <div id="barFill" class="h-full w-0 bg-white transition-all"></div>
+            </div>
+          </div>
 
-document.getElementById("intent-form").addEventListener("submit", async (e) => {
-  e.preventDefault();
-  const merchant = document.getElementById("merchant").value;
-  const amount = Number(document.getElementById("amount").value);
-  const item = document.getElementById("item").value;
-  await fetch("/intent", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ merchant, amount, item }),
-  });
-  await refresh();
-});
+          <div class="mt-5 grid gap-3 sm:grid-cols-3">
+            <div class="rounded-md border border-border bg-muted/50 p-3">
+              <p class="text-xs uppercase text-muted-foreground">Per transaction</p>
+              <p id="txnLimit" class="mt-1 font-medium text-white">--</p>
+            </div>
+            <div class="rounded-md border border-border bg-muted/50 p-3">
+              <p class="text-xs uppercase text-muted-foreground">Allowlist</p>
+              <p id="allowlist" class="mt-1 font-medium text-white">--</p>
+            </div>
+            <div class="rounded-md border border-border bg-muted/50 p-3">
+              <p class="text-xs uppercase text-muted-foreground">Expires</p>
+              <p id="expires" class="mt-1 font-medium text-white">--</p>
+            </div>
+          </div>
+        </div>
 
-refresh();
-setInterval(refresh, 5000);
-</script>
-</body>
+        <div class="rounded-lg border border-border bg-black/85 p-5 shadow-grid">
+          <h2 class="text-lg font-semibold text-white">Purchase Intent</h2>
+          <form id="intentForm" class="mt-5 space-y-4">
+            <div class="space-y-2">
+              <label for="merchant" class="text-sm font-medium text-white">Merchant</label>
+              <input
+                id="merchant"
+                name="merchant"
+                value="mikes-store"
+                autocomplete="off"
+                class="h-10 w-full rounded-md border border-input bg-zinc-950 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+              />
+            </div>
+            <div class="space-y-2">
+              <label for="amount" class="text-sm font-medium text-white">Amount</label>
+              <input
+                id="amount"
+                name="amount"
+                type="number"
+                step="0.01"
+                min="0"
+                value="10"
+                class="h-10 w-full rounded-md border border-input bg-zinc-950 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+              />
+            </div>
+            <div class="space-y-2">
+              <label for="item" class="text-sm font-medium text-white">Item</label>
+              <input
+                id="item"
+                name="item"
+                value="widget"
+                autocomplete="off"
+                class="h-10 w-full rounded-md border border-input bg-zinc-950 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+              />
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                data-preset="approve"
+                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white hover:bg-zinc-800"
+              >
+                Approve
+              </button>
+              <button
+                type="button"
+                data-preset="merchant"
+                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white hover:bg-zinc-800"
+              >
+                Merchant
+              </button>
+              <button
+                type="button"
+                data-preset="limit"
+                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white hover:bg-zinc-800"
+              >
+                Limit
+              </button>
+            </div>
+
+            <button
+              id="submitIntent"
+              type="submit"
+              class="h-10 w-full rounded-md bg-white px-4 text-sm font-semibold text-black hover:bg-zinc-200 focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-black"
+            >
+              Evaluate Intent
+            </button>
+          </form>
+          <div id="formResult" class="mt-4 min-h-12 rounded-md border border-border bg-zinc-950 p-3 text-sm text-muted-foreground">
+            Ready.
+          </div>
+        </div>
+      </section>
+
+      <section class="rounded-lg border border-border bg-black/85 p-5 shadow-grid">
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 class="text-lg font-semibold text-white">Decision Log</h2>
+            <p class="mt-1 text-sm text-muted-foreground">Newest first, with reason codes.</p>
+          </div>
+          <span id="logCount" class="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-muted-foreground">
+            0 decisions
+          </span>
+        </div>
+
+        <div class="mt-4 overflow-hidden rounded-lg border border-border">
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[980px] border-collapse text-sm">
+              <thead class="bg-zinc-950 text-xs uppercase text-muted-foreground">
+                <tr>
+                  <th class="px-3 py-3 text-left font-medium">Time</th>
+                  <th class="px-3 py-3 text-left font-medium">Verdict</th>
+                  <th class="px-3 py-3 text-left font-medium">Reason</th>
+                  <th class="px-3 py-3 text-left font-medium">Merchant</th>
+                  <th class="px-3 py-3 text-left font-medium">Amount</th>
+                  <th class="px-3 py-3 text-left font-medium">Card</th>
+                  <th class="px-3 py-3 text-left font-medium">Review</th>
+                  <th class="px-3 py-3 text-left font-medium">Extracted fields</th>
+                  <th class="px-3 py-3 text-left font-medium">Ignored instructions</th>
+                </tr>
+              </thead>
+              <tbody id="decisionRows" class="divide-y divide-border bg-black">
+                <tr>
+                  <td colspan="9" class="px-3 py-6 text-center text-muted-foreground">Loading decisions</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <script>
+      const els = {
+        modePill: document.querySelector("#modePill"),
+        dryRunSwitch: document.querySelector("#dryRunSwitch"),
+        dryRunKnob: document.querySelector("#dryRunKnob"),
+        dryRunLabel: document.querySelector("#dryRunLabel"),
+        modeCopy: document.querySelector("#modeCopy"),
+        guardBanner: document.querySelector("#guardBanner"),
+        guardBannerText: document.querySelector("#guardBannerText"),
+        balance: document.querySelector("#balance"),
+        spent: document.querySelector("#spent"),
+        remaining: document.querySelector("#remaining"),
+        blockedCount: document.querySelector("#blockedCount"),
+        barFill: document.querySelector("#barFill"),
+        capLabel: document.querySelector("#capLabel"),
+        txnLimit: document.querySelector("#txnLimit"),
+        allowlist: document.querySelector("#allowlist"),
+        expires: document.querySelector("#expires"),
+        wallet: document.querySelector("#wallet"),
+        rows: document.querySelector("#decisionRows"),
+        logCount: document.querySelector("#logCount"),
+        form: document.querySelector("#intentForm"),
+        formResult: document.querySelector("#formResult"),
+        submitIntent: document.querySelector("#submitIntent"),
+      };
+
+      let currentDryRun = true;
+
+      function formatXsgd(value) {
+        if (value === null || value === undefined || Number.isNaN(Number(value))) return "--";
+        return `${Number(value).toFixed(2)} XSGD`;
+      }
+
+      function formatTime(value) {
+        if (!value) return "--";
+        return new Date(value).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+          second: "2-digit",
+        });
+      }
+
+      function escapeHtml(value) {
+        return String(value ?? "")
+          .replaceAll("&", "&amp;")
+          .replaceAll("<", "&lt;")
+          .replaceAll(">", "&gt;")
+          .replaceAll('"', "&quot;")
+          .replaceAll("'", "&#039;");
+      }
+
+      function renderMode(dryRun) {
+        currentDryRun = dryRun;
+        els.dryRunSwitch.setAttribute("aria-checked", String(dryRun));
+        els.dryRunLabel.textContent = dryRun ? "DRY_RUN=true" : "DRY_RUN=false";
+        els.modePill.textContent = dryRun ? "Safe demo mode" : "Live MCP mode";
+        els.modeCopy.textContent = dryRun
+          ? "Approved intents return a dry-run card reference."
+          : "Approved intents call StraitsX MCP. Guard still blocks suspicious responses before signing.";
+
+        els.modePill.className = dryRun
+          ? "rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-semibold text-muted-foreground"
+          : "rounded-md border border-accent bg-accent px-2.5 py-1 text-xs font-semibold text-black";
+        els.dryRunSwitch.className = dryRun
+          ? "relative h-7 w-12 rounded-full border border-border bg-zinc-800 transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-black"
+          : "relative h-7 w-12 rounded-full border border-accent bg-accent transition focus:outline-none focus:ring-2 focus:ring-accent focus:ring-offset-2 focus:ring-offset-black";
+        els.dryRunKnob.className = dryRun
+          ? "absolute left-1 top-1 h-5 w-5 rounded-full bg-white transition"
+          : "absolute left-1 top-1 h-5 w-5 translate-x-5 rounded-full bg-black transition";
+      }
+
+      function renderStatus(status) {
+        const spent = Number(status.spentSoFar ?? 0);
+        const cap = Number(status.mandate?.capTotal ?? 0);
+        const remaining = Math.max(0, cap - spent);
+        const pct = cap > 0 ? Math.min(100, Math.max(0, (spent / cap) * 100)) : 0;
+
+        renderMode(Boolean(status.dryRun));
+        els.balance.textContent = formatXsgd(status.balance);
+        els.spent.textContent = formatXsgd(spent);
+        els.remaining.textContent = formatXsgd(remaining);
+        els.blockedCount.textContent = els.blockedCount.textContent || "0";
+        els.barFill.style.width = `${pct}%`;
+        els.capLabel.textContent = `${formatXsgd(spent)} of ${formatXsgd(cap)}`;
+        els.txnLimit.textContent = formatXsgd(status.mandate?.perTransactionLimit);
+        els.allowlist.textContent = (status.mandate?.merchantAllowlist ?? []).join(", ");
+        els.expires.textContent = status.mandate?.expiresAt
+          ? new Date(status.mandate.expiresAt).toLocaleDateString([], { month: "short", day: "2-digit" })
+          : "--";
+        els.wallet.textContent = status.address ?? "Wallet unavailable";
+      }
+
+      function renderDecisions(decisions) {
+        const suspicious = decisions.filter((d) => d.reasonCode === "SUSPICIOUS_MCP_RESPONSE");
+        els.blockedCount.textContent = String(suspicious.length);
+        els.logCount.textContent = `${decisions.length} decision${decisions.length === 1 ? "" : "s"}`;
+        els.guardBanner.classList.toggle("hidden", suspicious.length === 0);
+        if (suspicious.length > 0) {
+          els.guardBannerText.textContent =
+            `${suspicious.length} suspicious MCP response${suspicious.length === 1 ? "" : "s"} blocked before signing.`;
+        }
+
+        if (decisions.length === 0) {
+          els.rows.innerHTML =
+            '<tr><td colspan="9" class="px-3 py-6 text-center text-muted-foreground">No decisions yet</td></tr>';
+          return;
+        }
+
+        els.rows.innerHTML = decisions
+          .map((d) => {
+            const isSuspicious = d.reasonCode === "SUSPICIOUS_MCP_RESPONSE";
+            const verdictClasses =
+              d.verdict === "APPROVE"
+                ? "border-approve/40 bg-approve/15 text-approve"
+                : isSuspicious
+                  ? "border-accent/50 bg-accent/15 text-accent"
+                  : "border-decline/40 bg-decline/15 text-decline";
+            const rowClass = isSuspicious ? "bg-accent/10" : "bg-black";
+            const extracted = d.extractedPaymentFields
+              ? JSON.stringify(d.extractedPaymentFields)
+              : "-";
+            const ignored = (d.guardExcerpts ?? d.guardPatterns ?? []).slice(0, 2).join(" | ");
+            const review = d.reviewStatus
+              ? `${d.reviewStatus}${d.paymentValidationStatus ? `, fields ${d.paymentValidationStatus}` : ""}`
+              : "-";
+
+            return `
+              <tr class="${rowClass}">
+                <td class="whitespace-nowrap px-3 py-3 text-muted-foreground">${escapeHtml(formatTime(d.timestamp))}</td>
+                <td class="px-3 py-3">
+                  <span class="inline-flex rounded-md border px-2 py-1 text-xs font-semibold ${verdictClasses}">
+                    ${escapeHtml(d.verdict)}
+                  </span>
+                </td>
+                <td class="px-3 py-3"><code class="text-xs text-white">${escapeHtml(d.reasonCode ?? "CARD_ISSUED")}</code></td>
+                <td class="px-3 py-3 text-white">${escapeHtml(d.merchant)}</td>
+                <td class="whitespace-nowrap px-3 py-3 text-white">${formatXsgd(d.amount)}</td>
+                <td class="px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(d.cardReference ?? "-")}</code></td>
+                <td class="px-3 py-3"><code class="text-xs text-white">${escapeHtml(review)}</code></td>
+                <td class="max-w-md px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(extracted)}</code></td>
+                <td class="max-w-lg px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(ignored)}</code></td>
+              </tr>
+            `;
+          })
+          .join("");
+      }
+
+      async function refresh() {
+        const [statusRes, decisionsRes] = await Promise.all([fetch("/status"), fetch("/decisions")]);
+        if (!statusRes.ok || !decisionsRes.ok) throw new Error("Failed to load dashboard data");
+        renderStatus(await statusRes.json());
+        renderDecisions(await decisionsRes.json());
+      }
+
+      async function setDryRun(dryRun) {
+        els.dryRunSwitch.disabled = true;
+        const res = await fetch("/dry-run", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ dryRun }),
+        });
+        const payload = await res.json();
+        if (!res.ok) throw new Error(payload.error ?? "Could not update dry-run mode");
+        renderMode(payload.dryRun);
+        await refresh();
+        els.dryRunSwitch.disabled = false;
+      }
+
+      els.dryRunSwitch.addEventListener("click", () => {
+        setDryRun(!currentDryRun).catch((error) => {
+          els.formResult.textContent = error instanceof Error ? error.message : String(error);
+          els.dryRunSwitch.disabled = false;
+        });
+      });
+
+      document.querySelectorAll("[data-preset]").forEach((button) => {
+        button.addEventListener("click", () => {
+          const preset = button.dataset.preset;
+          const merchant = document.querySelector("#merchant");
+          const amount = document.querySelector("#amount");
+          const item = document.querySelector("#item");
+
+          if (preset === "approve") {
+            merchant.value = "mikes-store";
+            amount.value = "6";
+            item.value = "demo widget";
+          }
+          if (preset === "merchant") {
+            merchant.value = "sketchy-shop";
+            amount.value = "5";
+            item.value = "blocked merchant";
+          }
+          if (preset === "limit") {
+            merchant.value = "mikes-store";
+            amount.value = "20";
+            item.value = "over limit cart";
+          }
+        });
+      });
+
+      els.form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        els.submitIntent.disabled = true;
+        els.formResult.textContent = "Evaluating...";
+
+        const body = {
+          merchant: document.querySelector("#merchant").value,
+          amount: Number(document.querySelector("#amount").value),
+          item: document.querySelector("#item").value,
+        };
+
+        try {
+          const res = await fetch("/intent", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body),
+          });
+          const payload = await res.json();
+          const label = payload.verdict === "APPROVE" ? "Approved" : `Declined: ${payload.reason ?? "unknown"}`;
+          els.formResult.innerHTML = `<span class="font-semibold text-white">${escapeHtml(label)}</span><pre class="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
+          await refresh();
+        } catch (error) {
+          els.formResult.textContent = error instanceof Error ? error.message : String(error);
+        } finally {
+          els.submitIntent.disabled = false;
+        }
+      });
+
+      refresh().catch((error) => {
+        els.rows.innerHTML = `<tr><td colspan="9" class="px-3 py-6 text-center text-decline">${escapeHtml(error.message)}</td></tr>`;
+      });
+      setInterval(() => refresh().catch(() => {}), 5000);
+    </script>
+  </body>
 </html>

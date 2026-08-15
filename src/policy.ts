@@ -1,9 +1,9 @@
-import type { Intent, Mandate, PolicyContext, PolicyResult } from "./types.js";
+import type { Mandate, Intent, PolicyContext, PolicyResult } from "./types.js";
 
 export function evaluatePolicy(
   mandate: Mandate,
   intent: Intent,
-  context: PolicyContext,
+  context: PolicyContext
 ): PolicyResult {
   const now = context.now ?? Date.now();
 

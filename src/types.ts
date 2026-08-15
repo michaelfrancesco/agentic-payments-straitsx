@@ -1,30 +1,31 @@
-export type Mandate = {
+export interface Mandate {
   capTotal: number;
   perTransactionLimit: number;
   merchantAllowlist: string[];
   expiresAt: number;
-};
+}
 
-export type Intent = {
+export interface Intent {
   merchant: string;
   amount: number;
   item: string;
-};
+}
 
-export type PolicyContext = {
+export interface PolicyContext {
   spentSoFar: number;
   balance?: number;
   now?: number;
-};
+}
 
-export type ReasonCode =
+export type DeclineReason =
   | "CAP_EXCEEDED"
   | "TXN_LIMIT_EXCEEDED"
   | "MERCHANT_NOT_ALLOWED"
   | "MANDATE_EXPIRED"
   | "INSUFFICIENT_BALANCE"
-  | "MANDATE_REVOKED";
+  | "MANDATE_REVOKED"
+  | "SUSPICIOUS_MCP_RESPONSE";
 
 export type PolicyResult =
   | { verdict: "APPROVE" }
-  | { verdict: "DECLINE"; reason: ReasonCode };
+  | { verdict: "DECLINE"; reason: DeclineReason };
