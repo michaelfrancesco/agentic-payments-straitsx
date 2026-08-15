@@ -212,7 +212,7 @@ You should see `Mandate server listening on port 4020`.
 
 **6. Try the demo.** Either use the preset buttons on the dashboard's Purchase Intent panel (Approve, Merchant, Limit, Cap), or curl it directly:
 ```bash
-# Approve
+# Approve (needs a funded wallet, see note below)
 curl -X POST http://localhost:4020/intent -H "Content-Type: application/json" \
   -d '{"merchant":"mikes-store","amount":5,"item":"widget"}'
 
@@ -224,6 +224,8 @@ curl -X POST http://localhost:4020/intent -H "Content-Type: application/json" \
 curl -X POST http://localhost:4020/intent -H "Content-Type: application/json" \
   -d '{"merchant":"mikes-store","amount":20,"item":"big widget"}'
 ```
+
+With a throwaway key generated the way step 3 describes, your wallet has 0 XSGD, so the "Approve" example above will actually return `DECLINE, INSUFFICIENT_BALANCE` instead, since the balance rule genuinely has nothing to approve against. That's not a bug, it's the fifth policy rule doing exactly its job against a real (empty) balance read from Avalanche Fuji. The two decline examples above will show their real reason codes regardless of balance, since merchant and per-transaction checks run before the balance check ever does.
 Each call updates the decision log on the dashboard in real time.
 
 **7. Run the test suite:**
