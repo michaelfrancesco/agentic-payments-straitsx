@@ -6,3 +6,7 @@ dist/
 decisions.json
 mandate.json
 .context/
+claude-code-context-docs/
+docs/*
+!docs/architecture-diagram.png
+submission/
