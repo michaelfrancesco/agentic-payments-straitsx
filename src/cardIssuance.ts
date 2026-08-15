@@ -1,6 +1,7 @@
 import type { Account } from "viem";
 import { getCardChallenge } from "./mcpCardClient.js";
 import { guardPayload } from "./mcpGuard.js";
+import { extractPaymentFields, type ExtractedPaymentFields } from "./mcpPaymentExtractor.js";
 
 interface CardIntent {
   merchant: string;
@@ -28,7 +29,16 @@ export async function issueOneTimeCard(
 ): Promise<
   | { status: "dry_run"; wouldSend: { walletAddress: string; cardholderName: string; amountSgd: number } }
   | { status: "challenge_received"; challenge: unknown }
-  | { status: "blocked_by_guard"; patterns: string[]; excerpts: string[] }
+  | {
+      status: "blocked_by_guard";
+      patterns: string[];
+      excerpts: string[];
+      droppedFields: string[];
+      extractedPaymentFields: ExtractedPaymentFields;
+      paymentValidationStatus: "VALID" | "INVALID";
+      paymentValidationErrors: string[];
+      reviewStatus: "PENDING_REVIEW";
+    }
 > {
   const args = {
     walletAddress: account.address,
@@ -44,10 +54,20 @@ export async function issueOneTimeCard(
   const guardResult = guardPayload(challenge);
 
   if (guardResult.verdict === "SUSPICIOUS") {
+    const extraction = extractPaymentFields(challenge, {
+      amountSgd: args.amountSgd,
+      walletAddress: args.walletAddress,
+    });
+
     return {
       status: "blocked_by_guard",
       patterns: guardResult.patterns,
       excerpts: guardResult.excerpts,
+      droppedFields: guardResult.dropped,
+      extractedPaymentFields: extraction.fields,
+      paymentValidationStatus: extraction.validation.status,
+      paymentValidationErrors: extraction.validation.errors,
+      reviewStatus: "PENDING_REVIEW",
     };
   }
 

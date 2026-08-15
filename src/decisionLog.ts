@@ -13,6 +13,12 @@ export interface DecisionEntry {
   cardReference: string | null;
   balanceAtDecision: number | null;
   guardPatterns?: string[];
+  guardExcerpts?: string[];
+  droppedFields?: string[];
+  extractedPaymentFields?: unknown;
+  paymentValidationStatus?: "VALID" | "INVALID";
+  paymentValidationErrors?: string[];
+  reviewStatus?: "PENDING_REVIEW" | "APPROVED" | "DECLINED";
 }
 
 function readDecisions(): DecisionEntry[] {

@@ -74,6 +74,12 @@ app.post("/intent", async (req, res) => {
         cardReference: null,
         balanceAtDecision: balance ?? null,
         guardPatterns: card.patterns,
+        guardExcerpts: card.excerpts,
+        droppedFields: card.droppedFields,
+        extractedPaymentFields: card.extractedPaymentFields,
+        paymentValidationStatus: card.paymentValidationStatus,
+        paymentValidationErrors: card.paymentValidationErrors,
+        reviewStatus: card.reviewStatus,
       });
 
       res.json({ verdict: "DECLINE", reason: "SUSPICIOUS_MCP_RESPONSE", card });

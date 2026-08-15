@@ -258,12 +258,14 @@
                   <th class="px-3 py-3 text-left font-medium">Merchant</th>
                   <th class="px-3 py-3 text-left font-medium">Amount</th>
                   <th class="px-3 py-3 text-left font-medium">Card</th>
-                  <th class="px-3 py-3 text-left font-medium">Guard patterns</th>
+                  <th class="px-3 py-3 text-left font-medium">Review</th>
+                  <th class="px-3 py-3 text-left font-medium">Extracted fields</th>
+                  <th class="px-3 py-3 text-left font-medium">Ignored instructions</th>
                 </tr>
               </thead>
               <tbody id="decisionRows" class="divide-y divide-border bg-black">
                 <tr>
-                  <td colspan="7" class="px-3 py-6 text-center text-muted-foreground">Loading decisions</td>
+                  <td colspan="9" class="px-3 py-6 text-center text-muted-foreground">Loading decisions</td>
                 </tr>
               </tbody>
             </table>
@@ -376,7 +378,7 @@
 
         if (decisions.length === 0) {
           els.rows.innerHTML =
-            '<tr><td colspan="7" class="px-3 py-6 text-center text-muted-foreground">No decisions yet</td></tr>';
+            '<tr><td colspan="9" class="px-3 py-6 text-center text-muted-foreground">No decisions yet</td></tr>';
           return;
         }
 
@@ -390,6 +392,13 @@
                   ? "border-accent/50 bg-accent/15 text-accent"
                   : "border-decline/40 bg-decline/15 text-decline";
             const rowClass = isSuspicious ? "bg-accent/10" : "bg-black";
+            const extracted = d.extractedPaymentFields
+              ? JSON.stringify(d.extractedPaymentFields)
+              : "-";
+            const ignored = (d.guardExcerpts ?? d.guardPatterns ?? []).slice(0, 2).join(" | ");
+            const review = d.reviewStatus
+              ? `${d.reviewStatus}${d.paymentValidationStatus ? `, fields ${d.paymentValidationStatus}` : ""}`
+              : "-";
 
             return `
               <tr class="${rowClass}">
@@ -403,7 +412,9 @@
                 <td class="px-3 py-3 text-white">${escapeHtml(d.merchant)}</td>
                 <td class="whitespace-nowrap px-3 py-3 text-white">${formatXsgd(d.amount)}</td>
                 <td class="px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(d.cardReference ?? "-")}</code></td>
-                <td class="max-w-lg px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml((d.guardPatterns ?? []).join(", "))}</code></td>
+                <td class="px-3 py-3"><code class="text-xs text-white">${escapeHtml(review)}</code></td>
+                <td class="max-w-md px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(extracted)}</code></td>
+                <td class="max-w-lg px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(ignored)}</code></td>
               </tr>
             `;
           })
@@ -492,7 +503,7 @@
       });
 
       refresh().catch((error) => {
-        els.rows.innerHTML = `<tr><td colspan="7" class="px-3 py-6 text-center text-decline">${escapeHtml(error.message)}</td></tr>`;
+        els.rows.innerHTML = `<tr><td colspan="9" class="px-3 py-6 text-center text-decline">${escapeHtml(error.message)}</td></tr>`;
       });
       setInterval(() => refresh().catch(() => {}), 5000);
     </script>

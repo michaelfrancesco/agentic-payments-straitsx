@@ -95,3 +95,7 @@ Format for each entry:
 ## 2026-08-15 17:xx SGT — Learning support preference recorded
 **Type:** note
 **Details:** User asked for each future update or step change to include short explanations, definitions, and simple analogies because they are new to stablecoins, StraitsX, web3, and the payments stack. Continue to explain what changed, why it matters, and how it maps to a real-world finance or operations analogy.
+
+## 2026-08-15 17:36 SGT — Suspicious MCP response extraction added
+**Type:** code
+**Details:** Added deterministic payment-field extraction and validation for suspicious MCP responses. Mandate now separates unsafe instruction text from invoice-like payment fields (`amountSgd`, wallet, chain ID, token, card API URL), validates the fields against the approved intent and Fuji/XSGD expectations, logs dropped fields and ignored excerpts, and marks the blocked response as `PENDING_REVIEW`. This does not bypass the guard or sign anything. Verified `npm test` passes with 16 tests, `npx tsc --noEmit` passes, one live MCP guard call produced `SUSPICIOUS_MCP_RESPONSE` with `paymentValidationStatus: VALID`, and runtime mode was returned to `DRY_RUN=true`.
