@@ -115,3 +115,7 @@ Format for each entry:
 ## 2026-08-15 18:26 SGT — Controlled sandbox card issuance completed
 **Type:** milestone
 **Details:** Added a controlled x402/EIP-3009 signing path that only runs after policy approval, guard detection, extracted payment-field validation, and manual review approval. Production remains disabled. In sandbox live mode, one reviewed payment for 6 XSGD successfully issued card reference `01KASWWW32768CB45GC6D84AR0` and settlement transaction `0xeb4c03a03054866e13b53885b8b29e1751b40e2403745e592daa50f60e1c36cf`. Balance moved from 30 XSGD to 24 XSGD. Runtime was returned to `DRY_RUN=true`. Verification: `npm test` passes with 17 tests, `npm run typecheck` passes, dashboard serves at `http://localhost:4020/`, and the decision log now contains the issued card receipt.
+
+## 2026-08-15 18:29 SGT — Handoff file created
+**Type:** note
+**Details:** Created `.context/handoff-2026-08-15-1829-sgt.md` summarising current branch, pushed commits, runtime state, verified sandbox card issuance, remaining gaps, key files, safe demo commands, controlled live sandbox flow, next steps, and production warning. This is the fastest entry point for a backup agent.
