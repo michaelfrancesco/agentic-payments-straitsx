@@ -224,10 +224,10 @@ This was built alone in about 20 hours. With more time, here's what I'd actually
 
 ---
 
-## Credit
+## Closing
 
 This project and hackathon are a way for me to explore an area I have never tried before. My interest started with investing in cryptocurrency, where I began to see how this industry could become the future of finance. It is something I have always wanted to learn more about and explore further.
 
 I have been following StraitsX for the past two years, and I have seen how quickly the company has grown. I also see a real pain point in this space. I believe StraitsX has the potential to become a key backbone for trading, especially in connecting fiat and blockchain ecosystems.
 
-Thank you for the opportunity to learn and take part in this hackathon. The solution I am bringing may be simple, but the key takeaway for me is huge. This experience is a stepping stone for me to enter and grow in this industry.
+Thanks for the opportunity to learn and take part in this hackathon! The solution I am bringing may be simple, but the key takeaway for me is huge for me. This experience is a stepping stone for me to enter and grow in this industry.
