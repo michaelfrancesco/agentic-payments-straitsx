@@ -2,11 +2,11 @@
 
 **An agent spend control plane. A permission slip for AI money.**
 
-Built solo for **Agentix Playground** (SMU, 14 to 16 Aug 2026), hosted by StraitsX with Avalanche and AWS. Track: **Agentic Payments Infrastructure**.
+Built solo for **Agentix Playground**, hosted by StraitsX with Avalanche and AWS. Track: **Agentic Payments Infrastructure**.
 
 ---
 
-## The problem, in one paragraph
+## The Problem
 
 AI agents are about to buy things for you. Groceries. Flights. Subscriptions. Cloud bills. The technology is here. The safety is not. Right now, to let an AI pay for anything, you have to hand it your card. That is terrifying. If someone tricks the AI, your money is gone. Not slowed down. Not reduced. Gone.
 
@@ -40,13 +40,9 @@ Mandate is that permission slip. A human sets the rules once:
 
 Every purchase attempt is checked against those rules before any payment card is minted. If the rules pass, a real one-time card is issued, scoped to that exact merchant and amount. If any rule fails, the attempt is declined with a specific reason code, and the whole decision is logged. Permanently.
 
-**The demo money shot is the decline.** Anyone can show a payment working. Correct refusal is the whole thesis.
-
 ---
 
 ## What actually happened during this build (the story)
-
-This was not a scripted demo. It really happened.
 
 While wiring up real card issuance against the StraitsX sandbox, the response from the `get_card_sandbox` tool came back containing embedded natural-language instructions. Not data. Instructions. The response was telling the calling agent to sign a wallet transaction immediately, without asking the user for confirmation. That is a **live prompt injection** against an AI agent holding a private key.
 
@@ -66,11 +62,9 @@ Mandate caught it. The response never reached the signing code unreviewed. Here 
 This was verified end to end in the StraitsX sandbox:
 
 - Card reference: `01KASWWW32768CB45GC6D84AR0`
-- Settlement transaction: [`0xeb4c03a03054866e13b53885b8b29e1751b40e2403745e592daa50f60e1c36cf`](https://testnet.snowtrace.io/tx/0xeb4c03a03054866e13b53885b8b29e1751b40e2403745e592daa50f60e1c36cf)
+- Settlement transaction: `0xeb4c03a03054866e13b53885b8b29e1751b40e2403745e592daa50f60e1c36cf`
 - Wallet balance moved from **30 XSGD to 24 XSGD** on Avalanche Fuji.
 - Full receipt in `decisions.json`.
-
-**Every prize this project targets, it targets because of this story.**
 
 ---
 
@@ -78,8 +72,8 @@ This was verified end to end in the StraitsX sandbox:
 
 The organisers defined four milestones for this track. Mandate hits all four.
 
-| # | Milestone | What it means in plain words | Status |
-|---|---|---|---|
+| \# | Milestone | What it means in plain words | Status |
+| --- | --- | --- | --- |
 | 1 | **Funding** | The agent's money lives in a wallet whose keys are held by the agent, not by StraitsX | Done. Live XSGD balance read from Avalanche Fuji via viem. Keys never leave this project. |
 | 2 | **Discovery** | Natural language intent resolved to a specific product and price | Deliberately hardcoded per project scope. The intent (`merchant`, `amount`, `item`) is submitted directly. No live shopping agent, that is out of scope for a solo build. |
 | 3 | **Issuance** | A single-use card is minted at authorisation time, scoped to that exact amount and merchant | Done. Verified real sandbox card issuance after policy approval, guard scan, field validation, and human review. |
@@ -125,18 +119,42 @@ flowchart TD
 
 ### Why it is shaped this way, in three principles
 
-**1. The policy engine never trusts the network.** Every purchase intent is checked against five deterministic rules (expiry, merchant allowlist, per-transaction limit, total cap, live XSGD balance) before anything is issued. Pure code. Synchronous. Unit tested. No external calls. No ambiguity. If the wifi drops, the policy engine still knows the answer.
+**1. The policy engine never trusts the network.** Every purchase is checked against five rules before approval:
 
-**2. MCP responses are treated as untrusted input, not instructions.** This is the core security design. When the real StraitsX sandbox returned a response containing embedded text telling the agent to sign immediately without asking the user, the guard caught it before it reached signing code. The system does not just refuse forever. It separates *facts* (amount, wallet, chain, card API URL) from *instructions* (the injected text), validates the facts, and requires a human to explicitly approve before any signature happens.
+- expiry
+- merchant allowlist
+- per-transaction limit
+- total spending cap
+- live XSGD balance
+
+These checks run in code, synchronously, without external calls. If the network fails, the policy engine can still decide.
+
+**2. MCP responses are treated as untrusted input**
+
+The StraitsX sandbox returned a response with hidden text telling the agent to sign without user approval. The guard blocked it before signing.
+
+The system separates:
+
+- facts: amount, wallet, chain, card API URL
+- instructions: injected text
+
+Only facts are validated. Signing always requires explicit human approval.
 
 **Analogy:** the mail room clerk who reads every incoming package for hidden notes trying to give the office orders. Anything suspicious goes into a red bin instead of being delivered.
 
-**3. Everything is logged, append-only.** Every decision, approve or decline, real card or blocked attempt, is written to `decisions.json` with a timestamp and reason code. Nothing is silently dropped. If a regulator asks tomorrow "why did this transaction happen?", the answer is one file open.
+**3. Everything is logged, append-only**\
+Every approval, decline, card issue, and blocked attempt is written to `decisions.json` with:
+
+- timestamp
+- decision
+- reason code
+
+If someone asks why a transaction happened, the answer is in the log.
 
 ### Component map
 
 | Component | File | Responsibility |
-|---|---|---|
+| --- | --- | --- |
 | Policy engine | `src/policy.ts` | Five-rule evaluation, pure function |
 | XSGD balance reader | `src/xsgd.ts` | Live ERC-20 balance via viem on Avalanche Fuji |
 | MCP card client | `src/mcpCardClient.ts` | SSE connection to StraitsX sandbox MCP |
@@ -144,41 +162,15 @@ flowchart TD
 | Payment extractor | `src/mcpPaymentExtractor.ts` | Pulls and validates factual payment fields, ignores instruction text |
 | x402 signer | `src/x402.ts` | HTTP 402 challenge, EIP-3009 `transferWithAuthorization` signing, signed retry |
 | Decision log | `src/decisionLog.ts` | Append-only JSON log, review status updates |
-| Server | `src/server.ts` | Express routes: `/intent`, `/status`, `/decisions`, `/review/:id/approve|decline`, `/dry-run` |
+| Server | `src/server.ts` | Express routes: `/intent`, `/status`, `/decisions`, \`/review/:id/approve |
 | Dashboard | `public/index.html` | Live balance, mandate headroom, decision table, guard banner, review actions |
-
----
-
-## What StraitsX gave us vs what Mandate builds
-
-| Given by StraitsX and the committee | Built by Mandate |
-|---|---|
-| XSGD stablecoin on Avalanche | Policy engine (the five rules) |
-| Funded wallet, 30 XSGD on Fuji | The mandate config |
-| MCP card gateway at `card.straitsx.ai/sandbox/sse` | `/intent`, `/status`, `/decisions`, `/review/:id/*` endpoints |
-| Avalanche Fuji RPC endpoint | MCP client wiring, guard, extractor, x402 signer |
-| Documentation | Decision log, dashboard, README, architecture diagram, pitch |
-
-Short version: **StraitsX built the ATM. Mandate built the security guard standing in front of it.**
-
----
-
-## Sponsor prize fit
-
-- **StraitsX, Real-World Impact Award.** Solves an actual unsolved problem in agentic payments: letting an AI agent spend safely without handing it unchecked signing authority. The live prompt injection caught during this build is a real-world attack this design defends against. Not theoretical. Real.
-
-- **Avalanche, Best Use of x402.** Implements the full x402 HTTP 402 payment challenge flow against the StraitsX sandbox on Avalanche Fuji. Decode the `PAYMENT-REQUIRED` header. Build and sign an EIP-3009 `transferWithAuthorization` for XSGD. Retry with `PAYMENT-SIGNATURE`. Receive a card. See `src/x402.ts`.
-
-- **AWS, Best Architected.** Policy engine is unit tested and pure (`src/policy.ts`, `src/policy.test.ts`). The guard is unit tested against a captured real attack fixture (`src/mcpGuard.test.ts`). Every decision is durably logged. The system **fails closed by default**: a suspicious response blocks by default and requires a deliberate human step to proceed. Not fails open. Not silently proceeds. Closed by default. That is what secure looks like.
 
 ---
 
 ## Network
 
-Judging network was confirmed with a StraitsX mentor as **Fuji sandbox testnet**, not mainnet. This resolves a discrepancy in the general track materials, which state C-Chain Mainnet. Zero real-money risk. Switching to mainnet later is a config change (RPC URL and MCP endpoint), not a rebuild.
-
 | Setting | Value |
-|---|---|
+| --- | --- |
 | Network | Avalanche Fuji (testnet), chain ID 43113 |
 | RPC | `https://api.avax-test.network/ext/bc/C/rpc` |
 | MCP SSE endpoint | `https://card.straitsx.ai/sandbox/sse` |
@@ -192,7 +184,7 @@ Judging network was confirmed with a StraitsX mentor as **Fuji sandbox testnet**
 ```bash
 npm install
 npm run dev        # starts the Express server on PORT (default 4020)
-npm test           # 17 tests: policy engine, guard, payment extractor, x402
+npm test           # 53 tests: policy engine, guard, payment extractor, x402, mandate store, decision log, input validation
 ```
 
 Dashboard is served at `http://localhost:4020/`.
@@ -208,30 +200,34 @@ Dashboard is served at `http://localhost:4020/`.
 
 ---
 
-## What is deliberately out of scope
+## What I'd build next, as a solo developer
 
-Per project scope: no live shopping agent, no authentication or multi-tenancy, no refunds or chargebacks, no custom smart contracts, no database beyond a flat JSON file, no CI pipeline, no mobile responsiveness. See `CLAUDE.md` for the full list.
+This was built alone in about 20 hours. With more time, here's what I'd actually work on next, not a wishlist, just the next practical steps.
 
-Doing fewer things well beats doing many things poorly. That is the whole spirit of this submission.
+**Policy engine**
 
----
+- **Velocity limits.** Right now the rules only check dollar amounts. A compromised agent could stay under every limit and still drain the account through many small approved purchases. Capping transactions per hour closes that.
+- **Tiered auto-approval.** Small purchases auto-approve, larger ones require a human click, instead of today's all-or-nothing. Closer to how real card issuers actually work.
+- **A real kill switch.** `MANDATE_REVOKED` already exists as a reason code, but nothing can trigger it yet. One button that instantly blocks all further spend.
 
-## Status
+**Payment rails**
 
-- Core policy engine: done. Six unit tests.
-- Prompt injection guard: done. Seven unit tests, including a fixture built from a real captured attack.
-- Payment field extraction and validation: done. Three unit tests.
-- Real sandbox card issuance via x402 / EIP-3009: done. One unit test, plus one verified live sandbox run producing a real card and settlement transaction.
-- Dashboard: done.
-- Architecture diagram: this file plus `ARCHITECTURE.md`.
-- Deployed front-end and pitch recording: prepared for Sunday morning per the submission checklist in `claude-code-context-docs/`.
+- **Real merchant verification.** "Merchant" is currently just a string I type into a form. A real system checks against an actual registry instead of trusting free text.
+- **Settlement reconciliation.** A background job comparing the decision log against actual on-chain balance changes, to catch any drift between what the log says happened and what the chain says happened.
+- **Proper key custody.** The agent's private key lives in a plain `.env` file today. Next step is a hardware-backed key manager (AWS KMS or similar) so the key is never sitting in a readable file at all.
 
-Seventeen tests. All green.
+**Protocol**
+
+- **Signed mandate credentials.** The mandate is just a JSON file right now, anyone with file access could edit it. It should be a signed credential tied to the human who authorized it, not an editable file.
+- **Agent identity.** Adopt something like Visa TAP, Mastercard KYA, or ERC-8004 so a merchant can verify "this really is Mandate's agent," instead of just trusting whoever holds the wallet key.
+- **On-chain audit anchoring.** Hash the decision log and anchor it on-chain periodically, so the history becomes tamper-evident instead of just a local file I could quietly edit.
 
 ---
 
 ## Credit
 
-Built solo. MBA fresh grad, learning web3 and agentic payments in real time across one weekend, with Claude Code as the pair programmer. This project exists because the organisers, StraitsX and Avalanche and AWS, put real infrastructure in front of participants and said "go build the safety layer." Mandate is that layer, at the earliest useful form.
+This project and hackathon are a way for me to explore an area I have never tried before. My interest started with investing in cryptocurrency, where I began to see how this industry could become the future of finance. It is something I have always wanted to learn more about and explore further.
 
-Trust, not intelligence, is the bottleneck. Mandate is the missing piece.
+I have been following StraitsX for the past two years, and I have seen how quickly the company has grown. I also see a real pain point in this space. I believe StraitsX has the potential to become a key backbone for trading, especially in connecting fiat and blockchain ecosystems.
+
+Thank you for the opportunity to learn and take part in this hackathon. The solution I am bringing may be simple, but the key takeaway for me is huge. This experience is a stepping stone for me to enter and grow in this industry.
