@@ -10,7 +10,13 @@ if (!agentPrivateKey || !/^0x[0-9a-fA-F]{64}$/.test(agentPrivateKey)) {
 
 import express from "express";
 import { privateKeyToAccount } from "viem/accounts";
-import { getMandate, addMerchant, removeMerchant, renameMerchant } from "./mandateStore.js";
+import {
+  getMandate,
+  addMerchant,
+  removeMerchant,
+  renameMerchant,
+  updateLimits,
+} from "./mandateStore.js";
 import { evaluatePolicy } from "./policy.js";
 import { issueOneTimeCard } from "./cardIssuance.js";
 import { getXsgdBalance } from "./xsgd.js";
@@ -120,6 +126,31 @@ app.put("/mandate/allowlist/:merchant", mandateRateLimit, (req, res) => {
     res.json(renameMerchant(decodeURIComponent(req.params.merchant), newName));
   } catch (error) {
     res.status(409).json({ error: error instanceof Error ? error.message : String(error) });
+  }
+});
+
+app.patch("/mandate", mandateRateLimit, (req, res) => {
+  const { capTotal, perTransactionLimit, expiresAt } = req.body;
+  const update: {
+    capTotal?: number;
+    perTransactionLimit?: number;
+    expiresAt?: number;
+  } = {};
+
+  if (capTotal !== undefined) {
+    update.capTotal = Number(capTotal);
+  }
+  if (perTransactionLimit !== undefined) {
+    update.perTransactionLimit = Number(perTransactionLimit);
+  }
+  if (expiresAt !== undefined) {
+    update.expiresAt = Number(expiresAt);
+  }
+
+  try {
+    res.json(updateLimits(update));
+  } catch (error) {
+    res.status(400).json({ error: error instanceof Error ? error.message : String(error) });
   }
 });
 

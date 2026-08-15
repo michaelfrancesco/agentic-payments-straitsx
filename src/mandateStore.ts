@@ -47,6 +47,44 @@ export function removeMerchant(name: string): Mandate {
   return mandate;
 }
 
+export interface MandateLimitsUpdate {
+  capTotal?: number;
+  perTransactionLimit?: number;
+  expiresAt?: number;
+}
+
+export function updateLimits(update: MandateLimitsUpdate): Mandate {
+  const mandate = readMandate();
+
+  if (update.capTotal !== undefined) {
+    if (!Number.isFinite(update.capTotal) || update.capTotal <= 0) {
+      throw new Error("capTotal must be a positive number");
+    }
+    mandate.capTotal = update.capTotal;
+  }
+
+  if (update.perTransactionLimit !== undefined) {
+    if (!Number.isFinite(update.perTransactionLimit) || update.perTransactionLimit <= 0) {
+      throw new Error("perTransactionLimit must be a positive number");
+    }
+    mandate.perTransactionLimit = update.perTransactionLimit;
+  }
+
+  if (update.expiresAt !== undefined) {
+    if (!Number.isFinite(update.expiresAt) || update.expiresAt <= 0) {
+      throw new Error("expiresAt must be a valid timestamp");
+    }
+    mandate.expiresAt = update.expiresAt;
+  }
+
+  if (mandate.perTransactionLimit > mandate.capTotal) {
+    throw new Error("perTransactionLimit cannot be greater than capTotal");
+  }
+
+  writeMandate(mandate);
+  return mandate;
+}
+
 export function renameMerchant(oldName: string, newName: string): Mandate {
   const trimmed = newName.trim();
   if (!trimmed) {

@@ -197,23 +197,39 @@
             </div>
           </div>
 
-          <div class="mt-5 grid gap-3 sm:grid-cols-3">
-            <div class="rounded-md border border-border bg-muted/50 p-3">
+          <div class="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <button
+              id="capCard"
+              type="button"
+              class="rounded-md border border-border bg-muted/50 p-3 text-left transition hover:-translate-y-0.5 hover:border-accent/60 hover:bg-muted hover:shadow-[0_0_0_1px_rgba(250,204,21,0.20)] focus:outline-none focus:ring-2 focus:ring-accent/70"
+            >
+              <p class="text-xs uppercase text-muted-foreground">Cap total · click to edit</p>
+              <p id="capTotalValue" class="mt-1 font-medium text-white">--</p>
+            </button>
+            <button
+              id="txnLimitCard"
+              type="button"
+              class="rounded-md border border-border bg-muted/50 p-3 text-left transition hover:-translate-y-0.5 hover:border-accent/60 hover:bg-muted hover:shadow-[0_0_0_1px_rgba(250,204,21,0.20)] focus:outline-none focus:ring-2 focus:ring-accent/70"
+            >
               <p class="text-xs uppercase text-muted-foreground">Per transaction</p>
               <p id="txnLimit" class="mt-1 font-medium text-white">--</p>
-            </div>
+            </button>
             <button
               id="allowlistCard"
               type="button"
-              class="rounded-md border border-border bg-muted/50 p-3 text-left hover:border-accent/60 hover:bg-muted"
+              class="rounded-md border border-border bg-muted/50 p-3 text-left transition hover:-translate-y-0.5 hover:border-accent/60 hover:bg-muted hover:shadow-[0_0_0_1px_rgba(250,204,21,0.20)] focus:outline-none focus:ring-2 focus:ring-accent/70"
             >
               <p class="text-xs uppercase text-muted-foreground">Allowlist · click to manage</p>
               <p id="allowlist" class="mt-1 truncate font-medium text-white">--</p>
             </button>
-            <div class="rounded-md border border-border bg-muted/50 p-3">
-              <p class="text-xs uppercase text-muted-foreground">Expires</p>
+            <button
+              id="expiresCard"
+              type="button"
+              class="rounded-md border border-border bg-muted/50 p-3 text-left transition hover:-translate-y-0.5 hover:border-accent/60 hover:bg-muted hover:shadow-[0_0_0_1px_rgba(250,204,21,0.20)] focus:outline-none focus:ring-2 focus:ring-accent/70"
+            >
+              <p class="text-xs uppercase text-muted-foreground">Expires · click to edit</p>
               <p id="expires" class="mt-1 font-medium text-white">--</p>
-            </div>
+            </button>
           </div>
         </div>
 
@@ -257,28 +273,28 @@
               <button
                 type="button"
                 data-preset="approve"
-                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white hover:bg-zinc-800"
+                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white transition hover:-translate-y-0.5 hover:border-accent/60 hover:bg-zinc-800 hover:text-accent hover:shadow-[0_0_0_1px_rgba(250,204,21,0.20)] focus:outline-none focus:ring-2 focus:ring-accent/70"
               >
                 Approve
               </button>
               <button
                 type="button"
                 data-preset="merchant"
-                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white hover:bg-zinc-800"
+                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white transition hover:-translate-y-0.5 hover:border-accent/60 hover:bg-zinc-800 hover:text-accent hover:shadow-[0_0_0_1px_rgba(250,204,21,0.20)] focus:outline-none focus:ring-2 focus:ring-accent/70"
               >
                 Merchant
               </button>
               <button
                 type="button"
                 data-preset="limit"
-                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white hover:bg-zinc-800"
+                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white transition hover:-translate-y-0.5 hover:border-accent/60 hover:bg-zinc-800 hover:text-accent hover:shadow-[0_0_0_1px_rgba(250,204,21,0.20)] focus:outline-none focus:ring-2 focus:ring-accent/70"
               >
                 Limit
               </button>
               <button
                 type="button"
                 data-preset="cap"
-                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white hover:bg-zinc-800"
+                class="h-9 rounded-md border border-border bg-muted text-xs font-medium text-white transition hover:-translate-y-0.5 hover:border-accent/60 hover:bg-zinc-800 hover:text-accent hover:shadow-[0_0_0_1px_rgba(250,204,21,0.20)] focus:outline-none focus:ring-2 focus:ring-accent/70"
               >
                 Cap
               </button>
@@ -417,6 +433,72 @@
       </div>
     </div>
 
+    <div id="mandateEditorModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 p-4 font-mono">
+      <div class="max-h-[85vh] w-full max-w-md overflow-y-auto rounded-lg border border-border bg-zinc-950 shadow-grid">
+        <div class="sticky top-0 z-10 border-b border-border bg-zinc-950/95 px-5 py-4 backdrop-blur">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">Mandate controls</p>
+              <p class="mt-1 text-sm text-muted-foreground">Edit the spend cap, single-purchase limit, and expiry. Changes apply immediately.</p>
+            </div>
+            <button id="mandateEditorClose" type="button" class="rounded-md border border-border bg-muted px-2.5 py-1 text-xs font-medium text-white hover:bg-zinc-800">
+              Close
+            </button>
+          </div>
+        </div>
+
+        <form id="mandateEditorForm" class="space-y-4 p-5">
+          <div class="space-y-2">
+            <label for="capTotalInput" class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total cap</label>
+            <input
+              id="capTotalInput"
+              type="number"
+              min="1"
+              step="0.01"
+              class="h-10 w-full rounded-md border border-input bg-zinc-900 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="perTransactionInput" class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Per-transaction limit</label>
+            <input
+              id="perTransactionInput"
+              type="number"
+              min="1"
+              step="0.01"
+              class="h-10 w-full rounded-md border border-input bg-zinc-900 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+
+          <div class="space-y-2">
+            <label for="expiresAtInput" class="text-xs font-medium uppercase tracking-wide text-muted-foreground">Expiry</label>
+            <input
+              id="expiresAtInput"
+              type="datetime-local"
+              class="h-10 w-full rounded-md border border-input bg-zinc-900 px-3 text-sm text-white outline-none focus:ring-2 focus:ring-accent"
+            />
+          </div>
+
+          <div class="rounded-md border border-border bg-zinc-900 p-3">
+            <p class="text-[11px] leading-5 text-muted-foreground">
+              Guardrail: per-transaction limit cannot be greater than the total cap.
+            </p>
+          </div>
+
+          <div class="flex gap-2">
+            <button id="mandateEditorSave" type="submit" class="h-9 flex-1 rounded-md bg-white px-4 text-[11px] font-semibold uppercase tracking-wide text-black hover:bg-zinc-200 disabled:cursor-not-allowed disabled:opacity-70">
+              Save changes
+            </button>
+            <button id="mandateEditorCancel" type="button" class="h-9 flex-1 rounded-md border border-border bg-zinc-900 px-4 text-[11px] font-semibold uppercase tracking-wide text-white hover:bg-zinc-800">
+              Cancel
+            </button>
+          </div>
+
+          <p id="mandateEditorError" class="hidden text-xs text-decline"></p>
+        </form>
+      </div>
+    </div>
+
     <script>
       const els = {
         modePill: document.querySelector("#modePill"),
@@ -433,6 +515,7 @@
         blockedCount: document.querySelector("#blockedCount"),
         barFill: document.querySelector("#barFill"),
         capLabel: document.querySelector("#capLabel"),
+        capTotalValue: document.querySelector("#capTotalValue"),
         txnLimit: document.querySelector("#txnLimit"),
         allowlist: document.querySelector("#allowlist"),
         expires: document.querySelector("#expires"),
@@ -459,6 +542,18 @@
         allowlistAddForm: document.querySelector("#allowlistAddForm"),
         allowlistAddInput: document.querySelector("#allowlistAddInput"),
         allowlistError: document.querySelector("#allowlistError"),
+        capCard: document.querySelector("#capCard"),
+        txnLimitCard: document.querySelector("#txnLimitCard"),
+        expiresCard: document.querySelector("#expiresCard"),
+        mandateEditorModal: document.querySelector("#mandateEditorModal"),
+        mandateEditorClose: document.querySelector("#mandateEditorClose"),
+        mandateEditorCancel: document.querySelector("#mandateEditorCancel"),
+        mandateEditorForm: document.querySelector("#mandateEditorForm"),
+        mandateEditorSave: document.querySelector("#mandateEditorSave"),
+        mandateEditorError: document.querySelector("#mandateEditorError"),
+        capTotalInput: document.querySelector("#capTotalInput"),
+        perTransactionInput: document.querySelector("#perTransactionInput"),
+        expiresAtInput: document.querySelector("#expiresAtInput"),
       };
 
       let currentDryRun = true;
@@ -486,6 +581,13 @@
           minute: "2-digit",
           second: "2-digit",
         });
+      }
+
+      function formatDateTimeLocal(value) {
+        if (!value) return "";
+        const date = new Date(value);
+        const offsetMs = date.getTimezoneOffset() * 60 * 1000;
+        return new Date(date.getTime() - offsetMs).toISOString().slice(0, 16);
       }
 
       function escapeHtml(value) {
@@ -532,6 +634,7 @@
         els.blockedCount.textContent = els.blockedCount.textContent || "0";
         els.barFill.style.width = `${pct}%`;
         els.capLabel.textContent = `${formatXsgd(spent)} of ${formatXsgd(cap)}`;
+        els.capTotalValue.textContent = formatXsgd(cap);
         els.txnLimit.textContent = formatXsgd(status.mandate?.perTransactionLimit);
         els.allowlist.textContent = (status.mandate?.merchantAllowlist ?? []).join(", ") || "none";
         els.expires.textContent = status.mandate?.expiresAt
@@ -542,6 +645,35 @@
         if (!els.allowlistModal.classList.contains("hidden")) {
           renderAllowlistModal();
         }
+      }
+
+      function isMandateEditorOpen() {
+        return !els.mandateEditorModal.classList.contains("hidden");
+      }
+
+      function showMandateEditorError(message) {
+        els.mandateEditorError.textContent = message;
+        els.mandateEditorError.classList.toggle("hidden", !message);
+      }
+
+      function populateMandateEditor() {
+        els.capTotalInput.value = currentMandate?.capTotal ?? "";
+        els.perTransactionInput.value = currentMandate?.perTransactionLimit ?? "";
+        els.expiresAtInput.value = formatDateTimeLocal(currentMandate?.expiresAt);
+      }
+
+      function openMandateEditor() {
+        showMandateEditorError("");
+        populateMandateEditor();
+        els.mandateEditorModal.classList.remove("hidden");
+        els.mandateEditorModal.classList.add("flex");
+        els.capTotalInput.focus();
+      }
+
+      function closeMandateEditor() {
+        showMandateEditorError("");
+        els.mandateEditorModal.classList.add("hidden");
+        els.mandateEditorModal.classList.remove("flex");
       }
 
       function decisionKey(d) {
@@ -977,12 +1109,77 @@
         }
       });
 
+      [els.capCard, els.txnLimitCard, els.expiresCard].forEach((button) => {
+        button.addEventListener("click", openMandateEditor);
+      });
+
+      els.mandateEditorClose.addEventListener("click", closeMandateEditor);
+      els.mandateEditorCancel.addEventListener("click", closeMandateEditor);
+      els.mandateEditorModal.addEventListener("click", (event) => {
+        if (event.target === els.mandateEditorModal) closeMandateEditor();
+      });
+
+      const mandateEditorSaveLabel = els.mandateEditorSave.textContent.trim();
+
+      els.mandateEditorForm.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        showMandateEditorError("");
+
+        const capTotal = Number(els.capTotalInput.value);
+        const perTransactionLimit = Number(els.perTransactionInput.value);
+        const expiresAt = els.expiresAtInput.value
+          ? new Date(els.expiresAtInput.value).getTime()
+          : NaN;
+
+        if (!Number.isFinite(capTotal) || capTotal <= 0) {
+          showMandateEditorError("Total cap must be a positive number.");
+          return;
+        }
+        if (!Number.isFinite(perTransactionLimit) || perTransactionLimit <= 0) {
+          showMandateEditorError("Per-transaction limit must be a positive number.");
+          return;
+        }
+        if (perTransactionLimit > capTotal) {
+          showMandateEditorError("Per-transaction limit cannot be greater than total cap.");
+          return;
+        }
+        if (!Number.isFinite(expiresAt) || expiresAt <= 0) {
+          showMandateEditorError("Expiry must be a valid date and time.");
+          return;
+        }
+
+        els.mandateEditorSave.disabled = true;
+        els.mandateEditorSave.innerHTML = spinnerHtml("Saving...", "border-black/30");
+
+        try {
+          const res = await fetch("/mandate", {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ capTotal, perTransactionLimit, expiresAt }),
+          });
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.error ?? "Could not update mandate");
+
+          currentMandate = payload;
+          closeMandateEditor();
+          await refresh();
+        } catch (error) {
+          showMandateEditorError(error instanceof Error ? error.message : String(error));
+        } finally {
+          els.mandateEditorSave.disabled = false;
+          els.mandateEditorSave.textContent = mandateEditorSaveLabel;
+        }
+      });
+
       els.detailClose.addEventListener("click", closeDetailModal);
       els.detailModal.addEventListener("click", (event) => {
         if (event.target === els.detailModal) closeDetailModal();
       });
       document.addEventListener("keydown", (event) => {
-        if (event.key === "Escape" && activeDecisionId) closeDetailModal();
+        if (event.key !== "Escape") return;
+        if (activeDecisionId) closeDetailModal();
+        if (!els.allowlistModal.classList.contains("hidden")) closeAllowlistModal();
+        if (isMandateEditorOpen()) closeMandateEditor();
       });
       els.detailTabFormatted.addEventListener("click", () => {
         detailTab = "formatted";
