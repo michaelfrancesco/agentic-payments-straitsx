@@ -261,11 +261,12 @@
                   <th class="px-3 py-3 text-left font-medium">Review</th>
                   <th class="px-3 py-3 text-left font-medium">Extracted fields</th>
                   <th class="px-3 py-3 text-left font-medium">Ignored instructions</th>
+                  <th class="px-3 py-3 text-left font-medium">Action</th>
                 </tr>
               </thead>
               <tbody id="decisionRows" class="divide-y divide-border bg-black">
                 <tr>
-                  <td colspan="9" class="px-3 py-6 text-center text-muted-foreground">Loading decisions</td>
+                  <td colspan="10" class="px-3 py-6 text-center text-muted-foreground">Loading decisions</td>
                 </tr>
               </tbody>
             </table>
@@ -378,7 +379,7 @@
 
         if (decisions.length === 0) {
           els.rows.innerHTML =
-            '<tr><td colspan="9" class="px-3 py-6 text-center text-muted-foreground">No decisions yet</td></tr>';
+            '<tr><td colspan="10" class="px-3 py-6 text-center text-muted-foreground">No decisions yet</td></tr>';
           return;
         }
 
@@ -399,6 +400,14 @@
             const review = d.reviewStatus
               ? `${d.reviewStatus}${d.paymentValidationStatus ? `, fields ${d.paymentValidationStatus}` : ""}`
               : "-";
+            const reviewId = encodeURIComponent(d.id ?? d.timestamp);
+            const actions =
+              d.reviewStatus === "PENDING_REVIEW"
+                ? `<div class="flex min-w-48 gap-2">
+                    <button data-review-action="approve" data-review-id="${escapeHtml(reviewId)}" class="h-8 rounded-md bg-white px-3 text-xs font-semibold text-black hover:bg-zinc-200">Approve review</button>
+                    <button data-review-action="decline" data-review-id="${escapeHtml(reviewId)}" class="h-8 rounded-md border border-border bg-zinc-950 px-3 text-xs font-semibold text-white hover:bg-zinc-800">Decline</button>
+                  </div>`
+                : `<span class="text-xs text-muted-foreground">${escapeHtml(d.reviewStatus ? "Reviewed" : "-")}</span>`;
 
             return `
               <tr class="${rowClass}">
@@ -415,6 +424,7 @@
                 <td class="px-3 py-3"><code class="text-xs text-white">${escapeHtml(review)}</code></td>
                 <td class="max-w-md px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(extracted)}</code></td>
                 <td class="max-w-lg px-3 py-3"><code class="text-xs text-muted-foreground">${escapeHtml(ignored)}</code></td>
+                <td class="px-3 py-3">${actions}</td>
               </tr>
             `;
           })
@@ -502,8 +512,30 @@
         }
       });
 
+      els.rows.addEventListener("click", async (event) => {
+        const button = event.target.closest("[data-review-action]");
+        if (!button) return;
+
+        const action = button.dataset.reviewAction;
+        const id = button.dataset.reviewId;
+        button.disabled = true;
+        els.formResult.textContent =
+          action === "approve" ? "Approving review without signing..." : "Declining review...";
+
+        try {
+          const res = await fetch(`/review/${id}/${action}`, { method: "POST" });
+          const payload = await res.json();
+          if (!res.ok) throw new Error(payload.error ?? "Review update failed");
+          els.formResult.innerHTML = `<span class="font-semibold text-white">${escapeHtml(payload.status)}</span><pre class="mt-2 whitespace-pre-wrap text-xs text-muted-foreground">${escapeHtml(JSON.stringify(payload, null, 2))}</pre>`;
+          await refresh();
+        } catch (error) {
+          els.formResult.textContent = error instanceof Error ? error.message : String(error);
+          button.disabled = false;
+        }
+      });
+
       refresh().catch((error) => {
-        els.rows.innerHTML = `<tr><td colspan="9" class="px-3 py-6 text-center text-decline">${escapeHtml(error.message)}</td></tr>`;
+        els.rows.innerHTML = `<tr><td colspan="10" class="px-3 py-6 text-center text-decline">${escapeHtml(error.message)}</td></tr>`;
       });
       setInterval(() => refresh().catch(() => {}), 5000);
     </script>

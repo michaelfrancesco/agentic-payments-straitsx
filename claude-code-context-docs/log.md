@@ -99,3 +99,15 @@ Format for each entry:
 ## 2026-08-15 17:36 SGT — Suspicious MCP response extraction added
 **Type:** code
 **Details:** Added deterministic payment-field extraction and validation for suspicious MCP responses. Mandate now separates unsafe instruction text from invoice-like payment fields (`amountSgd`, wallet, chain ID, token, card API URL), validates the fields against the approved intent and Fuji/XSGD expectations, logs dropped fields and ignored excerpts, and marks the blocked response as `PENDING_REVIEW`. This does not bypass the guard or sign anything. Verified `npm test` passes with 16 tests, `npx tsc --noEmit` passes, one live MCP guard call produced `SUSPICIOUS_MCP_RESPONSE` with `paymentValidationStatus: VALID`, and runtime mode was returned to `DRY_RUN=true`.
+
+## 2026-08-15 17:38 SGT — Panelist review materials added
+**Type:** note
+**Details:** Added `claude-code-context-docs/PANELIST_REVIEW_PROMPT.md` for a reusable judge-style review prompt and `claude-code-context-docs/SUBMISSION_AND_JUDGING_CHECKLIST.md` for final submission completeness, sponsor-prize fit, risk list, and two-hour improvement order. Verified current code baseline again: `npm test` passes with 16 tests and `npm run typecheck` passes.
+
+## 2026-08-15 17:xx SGT — Panelist review materials mirrored to docs
+**Type:** note
+**Details:** Copied the panelist review prompt and submission/judging checklist into `docs/panelist-review/` so the judge-readiness materials are available in the public docs area as well as the canonical `claude-code-context-docs/` folder.
+
+## 2026-08-15 17:59 SGT — Manual review gate added before signing
+**Type:** code
+**Details:** Added stable decision IDs and manual review endpoints: `POST /review/:decisionId/approve` and `POST /review/:decisionId/decline`. The approve path only marks a suspicious MCP response as human-reviewed after extracted payment fields validate; it returns `APPROVED_NO_SIGNING` and does not mint a card or produce a wallet signature. Dashboard now shows review action buttons for `PENDING_REVIEW` rows. Verified `npm test` passes with 16 tests, `npm run typecheck` passes, a live MCP response was blocked as `SUSPICIOUS_MCP_RESPONSE`, review approval updated it to `APPROVED`, and runtime mode was returned to `DRY_RUN=true`.

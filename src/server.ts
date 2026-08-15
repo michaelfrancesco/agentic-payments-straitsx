@@ -6,7 +6,7 @@ import { mandate } from "./mandate.config.js";
 import { evaluatePolicy } from "./policy.js";
 import { issueOneTimeCard } from "./cardIssuance.js";
 import { getXsgdBalance } from "./xsgd.js";
-import { appendDecision, getDecisionsNewestFirst } from "./decisionLog.js";
+import { appendDecision, getDecisionsNewestFirst, updateReviewStatus } from "./decisionLog.js";
 
 const app = express();
 app.use(express.json());
@@ -53,6 +53,67 @@ app.post("/dry-run", (req, res) => {
 
 app.get("/decisions", (req, res) => {
   res.json(getDecisionsNewestFirst());
+});
+
+function findDecision(decisionId: string) {
+  return getDecisionsNewestFirst().find(
+    (entry) =>
+      entry.id === decisionId ||
+      encodeURIComponent(entry.timestamp) === decisionId ||
+      entry.timestamp === decisionId
+  );
+}
+
+app.post("/review/:decisionId/approve", (req, res) => {
+  const decision = findDecision(req.params.decisionId);
+
+  if (!decision) {
+    res.status(404).json({ error: "Decision not found" });
+    return;
+  }
+
+  if (decision.reviewStatus !== "PENDING_REVIEW") {
+    res.status(409).json({ error: "Decision is not pending review" });
+    return;
+  }
+
+  if (decision.paymentValidationStatus !== "VALID") {
+    res.status(409).json({ error: "Cannot approve invalid extracted payment fields" });
+    return;
+  }
+
+  const updated = updateReviewStatus(
+    req.params.decisionId,
+    "APPROVED",
+    "Human reviewed extracted fields. Signing remains disabled in this checkpoint."
+  );
+  res.json({
+    status: "APPROVED_NO_SIGNING",
+    message: "Review approved. No card was minted and no wallet signature was produced.",
+    decision: updated,
+  });
+});
+
+app.post("/review/:decisionId/decline", (req, res) => {
+  const decision = findDecision(req.params.decisionId);
+
+  if (!decision) {
+    res.status(404).json({ error: "Decision not found" });
+    return;
+  }
+
+  if (decision.reviewStatus !== "PENDING_REVIEW") {
+    res.status(409).json({ error: "Decision is not pending review" });
+    return;
+  }
+
+  const updated = updateReviewStatus(
+    req.params.decisionId,
+    "DECLINED",
+    "Human declined suspicious MCP response."
+  );
+
+  res.json({ status: "DECLINED_BY_REVIEW", decision: updated });
 });
 
 app.post("/intent", async (req, res) => {
